@@ -19,7 +19,9 @@ let appState = {
     replyingToCommentId: null,
     editingDraftId: null,
     batchMode: false,
-    selectedWorkIds: []
+    selectedWorkIds: [],
+    popularTimeRange: 'all',
+    adminPanelOpen: false
 };
 
 // ============ 图片预加载缓存 ============
@@ -75,6 +77,9 @@ function showToast(message, type = '') {
 
 // ============ 初始化 ============
 function init() {
+    migrateGalleryWorks();
+    appState.popularTimeRange = GameData.popularTimeRange || 'all';
+    updateNewCommentBadge();
     document.getElementById('userExp').textContent = GameData.user.exp;
     document.getElementById('userCoins').textContent = GameData.user.coins;
     updateTaskRequirements();
@@ -82,6 +87,14 @@ function init() {
     renderGallery();
     bindGalleryFilters();
     bindCommentEnter();
+    bindPopularTimeRange();
+    const adminBtn = document.getElementById('adminPanelBtn');
+    if (adminBtn) {
+        adminBtn.onclick = () => {
+            document.getElementById('adminPanelModal').classList.add('active');
+            openAdminPanel();
+        };
+    }
 }
 
 function bindCommentEnter() {
@@ -276,6 +289,195 @@ function getDesignThumbnail(work, thumbW, thumbH) {
     const scale = Math.min(thumbW / 400, thumbH / 560);
     renderDesignToCanvas(ctx, thumbW, thumbH, bgStyle, work.canvasElements, scale);
     return cvs.toDataURL();
+}
+
+async function getDesignThumbnailAsync(work, thumbW, thumbH) {
+    const bgStyle = work.background || GameData.gradients[work.gradientIdx || 0];
+    const cvs = document.createElement('canvas');
+    cvs.width = thumbW;
+    cvs.height = thumbH;
+    const ctx = cvs.getContext('2d');
+    const scale = Math.min(thumbW / 400, thumbH / 560);
+    await renderDesignToCanvasAsync(ctx, thumbW, thumbH, bgStyle, work.canvasElements, scale);
+    return cvs.toDataURL();
+}
+
+function _isToday(isoStr) {
+    if (!isoStr) return false;
+    try {
+        const d = new Date(isoStr);
+        const today = new Date();
+        return d.getFullYear() === today.getFullYear() &&
+               d.getMonth() === today.getMonth() &&
+               d.getDate() === today.getDate();
+    } catch (e) { return false; }
+}
+
+function _isThisWeek(isoStr) {
+    if (!isoStr) return false;
+    try {
+        const d = new Date(isoStr);
+        const now = new Date();
+        const diffMs = now - d;
+        return diffMs >= 0 && diffMs <= 7 * 86400000;
+    } catch (e) { return false; }
+}
+
+function _getWorkScore(work, range) {
+    range = range || 'all';
+    const likes = work.likes || 0;
+    const favs = work.favoriteCount || 0;
+    const views = work.views || 0;
+    const comments = _totalCommentsCount(work);
+    if (range === 'all') {
+        return likes * 2 + favs * 3 + views * 0.1 + comments * 1.5;
+    }
+    let score = 0;
+    if (work.viewLog && work.viewLog.length) {
+        for (const log of work.viewLog) {
+            if (range === 'today' && _isToday(log.date)) {
+                score += (log.likes || 0) * 2 + (log.favorites || 0) * 3 + (log.views || 0) * 0.1 + (log.comments || 0) * 1.5;
+            } else if (range === 'week' && _isThisWeek(log.date)) {
+                score += (log.likes || 0) * 2 + (log.favorites || 0) * 3 + (log.views || 0) * 0.1 + (log.comments || 0) * 1.5;
+            }
+        }
+    }
+    if (work.comments && work.comments.length) {
+        for (const c of work.comments) {
+            const ok = range === 'today' ? _isToday(c.createdAt) : _isThisWeek(c.createdAt);
+            if (ok) score += 1.5;
+            if (c.replies && c.replies.length) {
+                for (const r of c.replies) {
+                    const rok = range === 'today' ? _isToday(r.createdAt) : _isThisWeek(r.createdAt);
+                    if (rok) score += 1.5;
+                }
+            }
+        }
+    }
+    return score;
+}
+
+function migrateGalleryWorks() {
+    let changed = false;
+    const today = new Date().toISOString().slice(0, 10);
+    for (const work of GameData.galleryWorks) {
+        if (work.visibility === undefined) {
+            if (work.status === 'draft') work.visibility = 'draft';
+            else if (work.isMine && work.status === 'published') work.visibility = 'public';
+            else work.visibility = 'public';
+            changed = true;
+        }
+        if (work.favoriteCount === undefined || work.favoriteCount === null) {
+            work.favoriteCount = Math.floor(Math.random() * 81) + 10;
+            changed = true;
+        }
+        if (work.views === undefined || work.views === null) {
+            work.views = Math.floor(Math.random() * 751) + 50;
+            changed = true;
+        }
+        if (work.pinnedCommentId === undefined) {
+            work.pinnedCommentId = null;
+            changed = true;
+        }
+        if (!Array.isArray(work.featuredCommentIds)) {
+            work.featuredCommentIds = [];
+            changed = true;
+        }
+        if (work.lastReadCommentAt === undefined || work.lastReadCommentAt === null) {
+            work.lastReadCommentAt = null;
+            changed = true;
+        }
+        if (!Array.isArray(work.viewLog)) {
+            work.viewLog = [{ date: today, count: 0, likes: 0, favorites: 0, comments: 0 }];
+            changed = true;
+        }
+        if (!work.createdAt) {
+            work.createdAt = new Date(Date.now() - Math.random() * 30 * 86400000).toISOString();
+            changed = true;
+        }
+        if (work.comments && work.comments.length) {
+            for (const c of work.comments) {
+                if (!c.id) { c.id = Date.now() + Math.floor(Math.random() * 1000); changed = true; }
+                if (!Array.isArray(c.replies)) { c.replies = []; changed = true; }
+                if (c.isMine === undefined) { c.isMine = false; changed = true; }
+                if (c.featured === undefined) { c.featured = false; changed = true; }
+                if (!c.createdAt) { c.createdAt = new Date().toISOString(); changed = true; }
+                if (c.replies && c.replies.length) {
+                    for (const r of c.replies) {
+                        if (!r.id) { r.id = Date.now() + Math.floor(Math.random() * 1000); changed = true; }
+                        if (r.isMine === undefined) { r.isMine = false; changed = true; }
+                        if (!r.createdAt) { r.createdAt = new Date().toISOString(); changed = true; }
+                    }
+                }
+            }
+        }
+    }
+    if (changed) GameData.saveWorks();
+}
+
+function updateNewCommentBadge() {
+    const badge = document.getElementById('newCommentBadge');
+    if (!badge) return;
+    let count = 0;
+    for (const work of GameData.galleryWorks) {
+        if (!(work.isMine && work.visibility === 'public')) continue;
+        const lastRead = work.lastReadCommentAt ? new Date(work.lastReadCommentAt).getTime() : 0;
+        if (work.comments) {
+            for (const c of work.comments) {
+                if (c.createdAt && new Date(c.createdAt).getTime() > lastRead) count++;
+                if (c.replies) {
+                    for (const r of c.replies) {
+                        if (r.createdAt && new Date(r.createdAt).getTime() > lastRead) count++;
+                    }
+                }
+            }
+        }
+    }
+    if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.add('show');
+        badge.style.display = 'flex';
+    } else {
+        badge.classList.remove('show');
+        badge.style.display = 'none';
+    }
+}
+
+function bindPopularTimeRange() {
+    const container = document.getElementById('popularTimeRange');
+    if (!container) return;
+    const btns = container.querySelectorAll('.time-range-btn');
+    btns.forEach(btn => {
+        btn.onclick = () => {
+            btns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const range = btn.dataset.range;
+            appState.popularTimeRange = range;
+            GameData.popularTimeRange = range;
+            GameData.savePopularTimeRange();
+            renderGallery();
+        };
+    });
+}
+
+function toggleFeaturedComment(commentId) {
+    const workId = appState.currentViewingWorkId;
+    if (!workId) return;
+    const work = GameData.galleryWorks.find(w => w.id === workId);
+    if (!work || !work.isMine) return;
+    if (!Array.isArray(work.featuredCommentIds)) work.featuredCommentIds = [];
+    const idx = work.featuredCommentIds.indexOf(commentId);
+    if (idx > -1) {
+        work.featuredCommentIds.splice(idx, 1);
+        showToast('已取消精选');
+    } else {
+        work.featuredCommentIds.push(commentId);
+        showToast('已精选评论', 'success');
+    }
+    const comment = work.comments.find(c => c.id === commentId);
+    if (comment) comment.featured = work.featuredCommentIds.includes(commentId);
+    GameData.saveWorks();
+    renderComments(work.comments);
 }
 
 // ============ 训练营功能 ============
@@ -1106,8 +1308,21 @@ function renderGallery() {
     let works = [...GameData.galleryWorks];
     const filter = appState.galleryFilter;
 
+    const timeRangeDiv = document.getElementById('popularTimeRange');
+    if (timeRangeDiv) {
+        if (filter === 'popular') {
+            timeRangeDiv.style.display = 'flex';
+            const savedRange = appState.popularTimeRange;
+            timeRangeDiv.querySelectorAll('.time-range-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.range === savedRange);
+            });
+        } else {
+            timeRangeDiv.style.display = 'none';
+        }
+    }
+
     if (filter === 'mine') {
-        works = works.filter(w => w.isMine && w.status === 'published');
+        works = works.filter(w => w.isMine && w.visibility === 'public');
     } else if (filter === 'drafts') {
         works = works.filter(w => w.isMine && w.status === 'draft');
     } else if (filter === 'private') {
@@ -1117,10 +1332,9 @@ function renderGallery() {
     } else if (filter === 'favorites') {
         works = works.filter(w => GameData.favorites.includes(w.id) && w.visibility === 'public');
     } else if (filter === 'popular') {
+        const range = appState.popularTimeRange || 'all';
         works = works.filter(w => w.visibility === 'public').sort((a, b) => {
-            const scoreA = (a.likes || 0) * 2 + (a.favoriteCount || 0) * 3;
-            const scoreB = (b.likes || 0) * 2 + (b.favoriteCount || 0) * 3;
-            return scoreB - scoreA;
+            return _getWorkScore(b, range) - _getWorkScore(a, range);
         });
     } else {
         works = works.filter(w => w.visibility === 'public');
@@ -1159,19 +1373,17 @@ function renderGallery() {
         return;
     }
 
+    const defaultBg = GameData.gradients[0] || 'linear-gradient(135deg, #667eea, #764ba2)';
     grid.innerHTML = works.map(work => {
         const isFav = GameData.favorites.includes(work.id);
         const isDraft = work.status === 'draft';
         const isPrivate = work.visibility === 'private';
-        const thumbDataUrl = work.canvasElements ? getDesignThumbnail(work, 400, 500) : null;
-        const bgStyle = thumbDataUrl
-            ? `background-image: url(${thumbDataUrl}); background-size: cover; background-position: center top;`
-            : `background: ${work.background || GameData.gradients[work.gradientIdx % GameData.gradients.length]};`;
+        const bgStyle = `background: ${work.background || GameData.gradients[(work.gradientIdx || 0) % GameData.gradients.length] || defaultBg};`;
         const isSelected = appState.selectedWorkIds.includes(work.id);
         const totalComments = _totalCommentsCount(work);
 
         return `
-            <div class="gallery-item ${appState.batchMode ? 'batch-mode' : ''} ${isSelected ? 'selected' : ''}" 
+            <div id="card-${work.id}" class="gallery-item ${appState.batchMode ? 'batch-mode' : ''} ${isSelected ? 'selected' : ''}" 
                  onclick="${appState.batchMode ? `toggleWorkSelection(${work.id}, this)` : `openWorkDetail(${work.id})`}">
                 <div class="work-preview" style="${bgStyle}">
                     ${isDraft ? '<div style="position:absolute;top:8px;left:8px;background:rgba(255,152,0,0.9);color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📝 草稿</div>' : ''}
@@ -1202,6 +1414,24 @@ function renderGallery() {
             </div>
         `;
     }).join('');
+
+    setTimeout(() => {
+        works.forEach(async (work) => {
+            if (!work.canvasElements) return;
+            try {
+                const dataUrl = await getDesignThumbnailAsync(work, 400, 500);
+                const card = document.getElementById(`card-${work.id}`);
+                if (card) {
+                    const preview = card.querySelector('.work-preview');
+                    if (preview) {
+                        preview.style.backgroundImage = `url(${dataUrl})`;
+                        preview.style.backgroundSize = 'cover';
+                        preview.style.backgroundPosition = 'center top';
+                    }
+                }
+            } catch (e) {}
+        });
+    }, 50);
 }
 
 function bindGalleryFilters() {
@@ -1209,7 +1439,19 @@ function bindGalleryFilters() {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            appState.galleryFilter = btn.dataset.filter;
+            const filter = btn.dataset.filter;
+            appState.galleryFilter = filter;
+            if (filter !== 'popular') {
+                const timeDiv = document.getElementById('popularTimeRange');
+                if (timeDiv) {
+                    timeDiv.querySelectorAll('.time-range-btn').forEach(b => {
+                        b.classList.toggle('active', b.dataset.range === 'all');
+                    });
+                    appState.popularTimeRange = 'all';
+                    GameData.popularTimeRange = 'all';
+                    GameData.savePopularTimeRange();
+                }
+            }
             if (appState.batchMode) exitBatchMode();
             else renderGallery();
         });
@@ -1298,35 +1540,57 @@ async function batchExportWorks() {
         return;
     }
 
-    showToast(`正在导出 ${appState.selectedWorkIds.length} 个作品...`, 'success');
+    const total = appState.selectedWorkIds.length;
     const W = 800, H = 1120;
+    const ts = Date.now();
 
-    for (let i = 0; i < appState.selectedWorkIds.length; i++) {
-        const workId = appState.selectedWorkIds[i];
-        const work = GameData.galleryWorks.find(w => w.id === workId);
-        if (!work || !work.canvasElements) continue;
+    const progressEl = document.createElement('div');
+    progressEl.className = 'batch-progress';
+    progressEl.innerHTML = `
+        <div class="batch-progress-title">📥 批量导出中</div>
+        <div class="batch-progress-bar"><div class="batch-progress-bar-fill" style="width:0%"></div></div>
+        <div class="batch-progress-text">0/${total}</div>
+    `;
+    document.body.appendChild(progressEl);
+    const barFill = progressEl.querySelector('.batch-progress-bar-fill');
+    const progressText = progressEl.querySelector('.batch-progress-text');
 
-        const targetCanvas = document.createElement('canvas');
-        targetCanvas.width = W;
-        targetCanvas.height = H;
-        const ctx = targetCanvas.getContext('2d');
+    try {
+        for (let i = 0; i < total; i++) {
+            const workId = appState.selectedWorkIds[i];
+            const work = GameData.galleryWorks.find(w => w.id === workId);
+            if (work && work.canvasElements) {
+                const targetCanvas = document.createElement('canvas');
+                targetCanvas.width = W;
+                targetCanvas.height = H;
+                const ctx = targetCanvas.getContext('2d');
 
-        const bgStyle = work.background || GameData.gradients[work.gradientIdx || 0];
-        await renderDesignToCanvasAsync(ctx, W, H, bgStyle, work.canvasElements, 2);
+                const bgStyle = work.background || GameData.gradients[work.gradientIdx || 0];
+                await renderDesignToCanvasAsync(ctx, W, H, bgStyle, work.canvasElements, 2);
 
-        ctx.strokeStyle = '#e2e8f0';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(0, 0, W, H);
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(0, 0, W, H);
 
-        const link = document.createElement('a');
-        link.download = `${work.title || 'design'}-${workId}.png`;
-        link.href = targetCanvas.toDataURL('image/png');
-        link.click();
-
-        await new Promise(r => setTimeout(r, 500));
+                const safeTitle = (work.title || 'design').replace(/[\\/:*?"<>|]/g, '_');
+                const link = document.createElement('a');
+                link.download = `${safeTitle}-${i + 1}-${ts}.png`;
+                link.href = targetCanvas.toDataURL('image/png');
+                link.click();
+                await new Promise(r => setTimeout(r, 500));
+            }
+            const pct = Math.round(((i + 1) / total) * 100);
+            if (barFill) barFill.style.width = pct + '%';
+            if (progressText) progressText.textContent = `已导出 ${i + 1}/${total}`;
+        }
+        showToast('批量导出完成！', 'success');
+    } catch (e) {
+        showToast('导出过程中出错', 'error');
     }
 
-    showToast('批量导出完成！', 'success');
+    setTimeout(() => {
+        if (progressEl.parentNode) progressEl.parentNode.removeChild(progressEl);
+    }, 1500);
 }
 
 function toggleFavoriteWork(workId, btnEl) {
@@ -1384,6 +1648,7 @@ function renderComments(comments) {
     const workId = appState.currentViewingWorkId;
     const work = GameData.galleryWorks.find(w => w.id === workId);
     const isWorkAuthor = work && work.isMine;
+    const featuredIds = work?.featuredCommentIds || [];
 
     if (!comments || comments.length === 0) {
         container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:13px;">
@@ -1393,13 +1658,20 @@ function renderComments(comments) {
     }
 
     const pinned = comments.find(c => c.id === work?.pinnedCommentId);
-    const normalComments = comments.filter(c => c.id !== work?.pinnedCommentId);
-    const ordered = pinned ? [pinned, ...normalComments] : normalComments;
+    const featured = comments.filter(c => c.id !== work?.pinnedCommentId && featuredIds.includes(c.id));
+    const normalComments = comments.filter(c => c.id !== work?.pinnedCommentId && !featuredIds.includes(c.id));
+    const ordered = [];
+    if (pinned) ordered.push(pinned);
+    ordered.push(...featured);
+    ordered.push(...normalComments);
 
     container.innerHTML = ordered.map(c => {
         const isPinned = c.id === work?.pinnedCommentId;
+        const isFeatured = featuredIds.includes(c.id);
         const canPin = isWorkAuthor && (c.isMine || c.author === work?.author);
-        const bgStyle = isPinned ? 'background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;' : '';
+        const classes = ['comment-item'];
+        if (isPinned) classes.push('pinned');
+        if (isFeatured) classes.push('featured');
 
         let repliesHtml = '';
         if (c.replies && c.replies.length) {
@@ -1426,16 +1698,18 @@ function renderComments(comments) {
         ` : '';
 
         return `
-            <div id="comment-${c.id}" class="comment-item" style="${bgStyle}padding:12px;border-radius:8px;margin-bottom:10px;">
+            <div id="comment-${c.id}" class="${classes.join(' ')}" style="padding:12px;border-radius:8px;margin-bottom:10px;">
                 <div class="comment-avatar" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0;">${c.avatar || c.author.charAt(0).toUpperCase()}</div>
                 <div class="comment-content" style="flex:1;margin-left:10px;">
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
                         ${isPinned ? '<span style="background:#f59e0b;color:white;padding:1px 6px;border-radius:4px;font-size:11px;">📌 置顶</span>' : ''}
+                        ${isFeatured ? '<span class="comment-featured-badge">⭐ 精选</span>' : ''}
                         <span class="comment-author" style="font-weight:600;color:#334155;">${c.author}</span>
                         <span style="color:#94a3b8;font-size:11px;">${c.createdAt || ''}</span>
                         <div style="margin-left:auto;display:flex;gap:4px;">
                             <button class="btn-icon" onclick="openReply(${c.id})" style="background:none;border:none;color:#667eea;cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;" title="回复">💬 回复</button>
                             ${canPin ? `<button class="btn-icon" onclick="pinComment(${c.id})" style="background:none;border:none;color:${isPinned ? '#f59e0b' : '#94a3b8'};cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;" title="置顶">📌</button>` : ''}
+                            ${canPin ? `<button class="btn-icon" onclick="toggleFeaturedComment(${c.id})" style="background:none;border:none;color:${isFeatured ? '#f59e0b' : '#94a3b8'};cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;" title="精选">${isFeatured ? '⭐ 取消精选' : '⭐ 精选'}</button>` : ''}
                             ${c.isMine ? `<button class="btn-icon" onclick="deleteComment(${c.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;" title="删除评论">🗑️</button>` : ''}
                         </div>
                     </div>
@@ -1638,6 +1912,9 @@ async function openWorkDetail(id) {
 
     renderComments(work.comments);
     document.getElementById('workDetailModal').classList.add('active');
+    work.lastReadCommentAt = new Date().toISOString();
+    GameData.saveWorks();
+    updateNewCommentBadge();
 }
 
 function deleteWork(workId) {
@@ -2050,6 +2327,111 @@ function shareScore() {
 
 function fixMistake(type) {
     showToast(`已修正: ${type === 'contrast' ? '对比度不足' : type}`, 'success');
+}
+
+// ============ 运营面板 ============
+function openAdminPanel() {
+    appState.adminPanelOpen = true;
+    renderAdminSummary();
+    renderAdminTrendList();
+    renderAdminLatestComments();
+}
+
+function renderAdminSummary() {
+    const container = document.getElementById('adminSummary');
+    if (!container) return;
+    const publicWorks = GameData.galleryWorks.filter(w => w.visibility === 'public');
+    let totalLikes = 0, totalFavs = 0, totalComments = 0, totalViews = 0;
+    publicWorks.forEach(w => {
+        totalLikes += w.likes || 0;
+        totalFavs += w.favoriteCount || 0;
+        totalViews += w.views || 0;
+        totalComments += _totalCommentsCount(w);
+    });
+    container.innerHTML = `
+        <div class="admin-stat-card">
+            <div class="stat-num">${publicWorks.length}</div>
+            <div class="stat-label">公开作品数</div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="stat-num">${totalLikes}</div>
+            <div class="stat-label">总点赞</div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="stat-num">${totalFavs}</div>
+            <div class="stat-label">总收藏</div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="stat-num">${totalComments}</div>
+            <div class="stat-label">总评论</div>
+        </div>
+    `;
+}
+
+function renderAdminTrendList() {
+    const container = document.getElementById('adminTrendList');
+    if (!container) return;
+    const works = GameData.galleryWorks
+        .filter(w => w.visibility === 'public')
+        .sort((a, b) => _getWorkScore(b, 'all') - _getWorkScore(a, 'all'))
+        .slice(0, 10);
+
+    if (works.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:13px;">暂无公开作品</div>';
+        return;
+    }
+
+    container.innerHTML = works.map((w, i) => {
+        const rankClass = i < 3 ? `r${i + 1}` : '';
+        return `
+            <div class="admin-trend-item" onclick="openWorkDetail(${w.id}); document.getElementById('adminPanelModal').classList.remove('active');">
+                <div class="admin-trend-rank ${rankClass}">${i + 1}</div>
+                <div class="admin-trend-title">${w.title}</div>
+                <div class="admin-trend-stats">
+                    <span>❤️ ${w.likes || 0}</span>
+                    <span>⭐ ${w.favoriteCount || 0}</span>
+                    <span>💬 ${_totalCommentsCount(w)}</span>
+                    <span>👁️ ${w.views || 0}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderAdminLatestComments() {
+    const container = document.getElementById('adminLatestComments');
+    if (!container) return;
+    const all = [];
+    GameData.galleryWorks.forEach(w => {
+        if (w.visibility !== 'public') return;
+        if (w.comments) {
+            w.comments.forEach(c => {
+                all.push({ type: 'comment', work: w, workId: w.id, workTitle: w.title, author: c.author, content: c.content, createdAt: c.createdAt });
+                if (c.replies) {
+                    c.replies.forEach(r => {
+                        all.push({ type: 'reply', work: w, workId: w.id, workTitle: w.title, author: r.author, content: r.content, createdAt: r.createdAt });
+                    });
+                }
+            });
+        }
+    });
+    all.sort((a, b) => {
+        const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return tb - ta;
+    });
+    const top = all.slice(0, 10);
+    if (top.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:13px;">暂无评论</div>';
+        return;
+    }
+    container.innerHTML = top.map(item => `
+        <div class="admin-comment-item" onclick="openWorkDetail(${item.workId}); document.getElementById('adminPanelModal').classList.remove('active');" style="cursor:pointer;">
+            <span class="c-author">${item.author}</span>
+            <span class="c-work"> · ${item.workTitle}</span>
+            <div class="c-content">${item.content}</div>
+        </div>
+    `).join('');
 }
 
 // ============ 全局事件 ============

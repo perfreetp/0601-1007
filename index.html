@@ -28,9 +28,10 @@
                     <span class="nav-icon">🎨</span>
                     <span class="nav-text">素材仓库</span>
                 </button>
-                <button class="nav-btn" data-page="gallery" title="作品墙">
+                <button class="nav-btn" data-page="gallery" title="作品墙" style="position:relative;">
                     <span class="nav-icon">🖼️</span>
                     <span class="nav-text">作品墙</span>
+                    <span id="newCommentBadge" class="badge" style="display:none;position:absolute;top:4px;right:4px;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:10px;display:flex;align-items:center;justify-content:center;"></span>
                 </button>
                 <button class="nav-btn" data-page="battle" title="对战房">
                     <span class="nav-icon">⚔️</span>
@@ -771,6 +772,7 @@
     <section id="page-gallery" class="page">
         <div class="page-header">
             <div style="display:flex;align-items:center;gap:12px;">
+                <button id="adminPanelBtn" class="btn-secondary" style="padding:6px 12px;font-size:12px;">📊 运营数据</button>
                 <h1 style="margin:0;">🖼️ 作品墙</h1>
                 <button id="batchManageBtn" class="btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="enterBatchMode()">☑️ 批量管理</button>
             </div>
@@ -783,6 +785,11 @@
                 <button class="filter-btn" data-filter="published">已发布</button>
                 <button class="filter-btn" data-filter="favorites">我的收藏</button>
                 <button class="filter-btn" data-filter="popular">热门</button>
+                <div id="popularTimeRange" style="display:none;margin-left:8px;gap:4px;align-items:center;">
+                  <button class="time-range-btn active" data-range="all">全部</button>
+                  <button class="time-range-btn" data-range="week">本周</button>
+                  <button class="time-range-btn" data-range="today">今天</button>
+                </div>
             </div>
             <div id="batchManageBar" style="display:none;margin-top:12px;padding:12px 16px;background:var(--bg-secondary);border-radius:10px;align-items:center;gap:12px;">
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
@@ -857,6 +864,17 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <div id="adminPanelModal" class="modal" style="z-index:200;">
+          <div class="modal-content" style="width:720px;max-height:80vh;overflow-y:auto;">
+            <button class="modal-close" onclick="document.getElementById('adminPanelModal').classList.remove('active')">×</button>
+            <h2 style="margin:0 0 16px;">📊 作品运营面板</h2>
+            <div id="adminSummary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;"></div>
+            <h3 style="margin:0 0 12px;font-size:15px;">🔥 互动数据趋势（公开作品TOP10）</h3>
+            <div id="adminTrendList" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <h3 style="margin:16px 0 12px;font-size:15px;">📝 最新评论动态</h3>
+            <div id="adminLatestComments" style="display:flex;flex-direction:column;gap:8px;max-height:200px;overflow-y:auto;"></div>
+          </div>
         </div>
     </section>
 

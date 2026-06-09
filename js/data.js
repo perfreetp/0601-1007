@@ -147,6 +147,9 @@ const GameData = {
     selectedWorks: Storage.get('selectedWorks', []),
     batchMode: false,
 
+    lastViewedFilter: Storage.get('lastViewedFilter', 'all'),
+    popularTimeRange: Storage.get('popularTimeRange', 'all'),
+
     dailyTasks: [
         { id: 1, title: '完成1个版式关卡', reward: 50, done: true },
         { id: 2, title: '尝试3种配色方案', reward: 30, done: false },
@@ -159,5 +162,7 @@ const GameData = {
     saveMyWorks() { Storage.set('myWorks', this.myWorks); },
     saveMyDrafts() { Storage.set('myDrafts', this.myDrafts); },
     saveMyPrivate() { Storage.set('myPrivate', this.myPrivate); },
-    saveSelectedWorks() { Storage.set('selectedWorks', this.selectedWorks); }
+    saveSelectedWorks() { Storage.set('selectedWorks', this.selectedWorks); },
+    saveLastViewedFilter() { Storage.set('lastViewedFilter', this.lastViewedFilter); },
+    savePopularTimeRange() { Storage.set('popularTimeRange', this.popularTimeRange); }
 };

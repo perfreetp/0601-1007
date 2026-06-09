@@ -2488,3 +2488,146 @@ body {
 #replyInputContainer input:focus {
     border-color: var(--primary);
 }
+
+/* 热门榜时间切换 */
+.time-range-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.time-range-btn:hover { background: var(--bg-hover); }
+.time-range-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* 运营数据卡片 */
+.admin-stat-card {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+.admin-stat-card .stat-num {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.admin-stat-card .stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* 趋势榜单项 */
+.admin-trend-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.admin-trend-item:hover { background: var(--bg-hover); }
+.admin-trend-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.admin-trend-rank.r1 { background: linear-gradient(135deg,#f59e0b,#ef4444); }
+.admin-trend-rank.r2 { background: linear-gradient(135deg,#8b5cf6,#6366f1); }
+.admin-trend-rank.r3 { background: linear-gradient(135deg,#10b981,#059669); }
+.admin-trend-title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-trend-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* 最新评论 */
+.admin-comment-item {
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.admin-comment-item .c-author { font-weight: 600; color: var(--primary); }
+.admin-comment-item .c-work { color: var(--text-secondary); font-size: 11px; }
+.admin-comment-item .c-content { color: var(--text-primary); margin-top: 2px; }
+
+/* 评论精选 */
+.comment-featured-badge {
+  background: linear-gradient(135deg,#f59e0b,#ef4444);
+  color: white;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.comment-item.featured {
+  background: linear-gradient(135deg,#fff7ed,#fef3c7);
+  border: 1px solid #fcd34d;
+}
+
+/* badge */
+.badge { display: none; }
+.badge.show { display: flex !important; }
+
+/* 批量导出进度 */
+.batch-progress {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  z-index: 9999;
+  min-width: 240px;
+}
+.batch-progress-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.batch-progress-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.batch-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg,var(--primary),#ec4899);
+  transition: width 0.3s;
+}
+.batch-progress-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: right;
+}
