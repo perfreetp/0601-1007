@@ -76,6 +76,120 @@ function bindCommentEnter() {
     }
 }
 
+// ============ 通用画布渲染函数 ============
+function parseGradient(style) {
+    const patterns = [
+        { key: '#f093fb', colors: ['#f093fb', '#f5576c'] },
+        { key: '#4facfe', colors: ['#4facfe', '#00f2fe'] },
+        { key: '#43e97b', colors: ['#43e97b', '#38f9d7'] },
+        { key: '#fa709a', colors: ['#fa709a', '#fee140'] },
+        { key: '#30cfd0', colors: ['#30cfd0', '#330867'] },
+        { key: '#667eea', colors: ['#667eea', '#764ba2'] },
+        { key: '#FF6B6B', colors: ['#F7FFF7', '#FFE66D'] },
+        { key: '#2C3E50', colors: ['#ECF0F1', '#BDC3C7'] },
+        { key: '#2D5016', colors: ['#FFFACD', '#9ACD32'] },
+        { key: '#FF4500', colors: ['#FFFFE0', '#FFD700'] }
+    ];
+    for (const p of patterns) {
+        if (style && style.includes(p.key)) return p.colors;
+    }
+    return ['#f8fafc', '#e2e8f0'];
+}
+
+function renderDesignToCanvas(ctx, W, H, bgStyle, elements, scale) {
+    scale = scale || 2;
+    ctx.clearRect(0, 0, W, H);
+
+    const bg = bgStyle || 'linear-gradient(135deg, #f8fafc, #e2e8f0)';
+    if (bg.startsWith('#') || bg.startsWith('rgb')) {
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+    } else {
+        const gradient = ctx.createLinearGradient(0, 0, W, H);
+        const colors = parseGradient(bg);
+        gradient.addColorStop(0, colors[0]);
+        gradient.addColorStop(1, colors[1]);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    if (!elements) return;
+
+    elements.forEach(el => {
+        const x = el.x * scale;
+        const y = el.y * scale;
+
+        if (el.type === 'text') {
+            const fontSize = (el.fontSize || 16) * scale;
+            const fontWeight = el.fontWeight || '400';
+            ctx.fillStyle = el.color || '#1e293b';
+            const fontFamily = getFontCSS(el.fontFamily || 'Noto Sans SC');
+            ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+            ctx.textBaseline = 'top';
+
+            const text = el.content || '';
+            const chars = text.split('');
+            let line = '';
+            let lineY = y;
+            const maxWidth = 300 * scale;
+
+            chars.forEach(char => {
+                const testLine = line + char;
+                if (ctx.measureText(testLine).width > maxWidth && line) {
+                    ctx.fillText(line, x, lineY);
+                    line = char;
+                    lineY += fontSize * 1.4;
+                } else {
+                    line = testLine;
+                }
+            });
+            if (line) ctx.fillText(line, x, lineY);
+
+        } else if (el.type === 'shape') {
+            ctx.fillStyle = el.bgColor || '#667eea';
+            const size = 100 * scale;
+            if (el.content === 'rect') {
+                ctx.fillRect(x, y, size, size);
+            } else if (el.content === 'circle') {
+                ctx.beginPath();
+                ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (el.content === 'line') {
+                ctx.fillRect(x, y + 20*scale, 150*scale, 4*scale);
+            }
+        } else if (el.type === 'image') {
+            const imgW = 150 * scale;
+            const imgH = 150 * scale;
+            const imgGradient = ctx.createLinearGradient(x, y, x + imgW, y + imgH);
+            const imgColors = parseGradient(el.bgColor || '#667eea');
+            imgGradient.addColorStop(0, imgColors[0]);
+            imgGradient.addColorStop(1, imgColors[1]);
+            ctx.fillStyle = imgGradient;
+            ctx.fillRect(x, y, imgW, imgH);
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, imgW, imgH);
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.font = `${36 * scale}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🖼️', x + imgW/2, y + imgH/2);
+            ctx.textAlign = 'start';
+        }
+    });
+}
+
+function getDesignThumbnail(work, thumbW, thumbH) {
+    const bgStyle = work.background || GameData.gradients[work.gradientIdx || 0];
+    const cvs = document.createElement('canvas');
+    cvs.width = thumbW;
+    cvs.height = thumbH;
+    const ctx = cvs.getContext('2d');
+    const scale = Math.min(thumbW / 400, thumbH / 560);
+    renderDesignToCanvas(ctx, thumbW, thumbH, bgStyle, work.canvasElements, scale);
+    return cvs.toDataURL();
+}
+
 // ============ 训练营功能 ============
 function startCourse(courseId) {
     const course = GameData.courses[courseId];
@@ -629,102 +743,29 @@ function nextLevel() {
 // ============ 功能1：真实导出画布图片 ============
 function exportDesign() {
     showToast('正在生成图片...', 'success');
-    
+
     setTimeout(() => {
         try {
-            const targetCanvas = document.createElement('canvas');
-            const ctx = targetCanvas.getContext('2d');
             const W = 800, H = 1120;
+            const targetCanvas = document.createElement('canvas');
             targetCanvas.width = W;
             targetCanvas.height = H;
-            
+            const ctx = targetCanvas.getContext('2d');
+
             const bgEl = document.getElementById('canvasBg');
             const bgStyle = bgEl.style.background || 'linear-gradient(135deg, #f8fafc, #e2e8f0)';
-            
-            if (bgStyle.startsWith('#') || bgStyle.startsWith('rgb')) {
-                ctx.fillStyle = bgStyle;
-                ctx.fillRect(0, 0, W, H);
-            } else {
-                const gradient = ctx.createLinearGradient(0, 0, W, H);
-                const colors = ['#f8fafc', '#e2e8f0'];
-                if (bgStyle.includes('#FF6B6B')) { gradient.addColorStop(0, '#F7FFF7'); gradient.addColorStop(1, '#FFE66D'); }
-                else if (bgStyle.includes('#2C3E50')) { gradient.addColorStop(0, '#ECF0F1'); gradient.addColorStop(1, '#BDC3C7'); }
-                else if (bgStyle.includes('#2D5016')) { gradient.addColorStop(0, '#FFFACD'); gradient.addColorStop(1, '#9ACD32'); }
-                else if (bgStyle.includes('#FF4500')) { gradient.addColorStop(0, '#FFFFE0'); gradient.addColorStop(1, '#FFD700'); }
-                else if (bgStyle.includes('#667eea')) { gradient.addColorStop(0, '#667eea'); gradient.addColorStop(1, '#764ba2'); }
-                else { gradient.addColorStop(0, colors[0]); gradient.addColorStop(1, colors[1]); }
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, W, H);
-            }
-            
-            const scale = 2;
-            appState.canvasElements.forEach(el => {
-                const x = el.x * scale;
-                const y = el.y * scale;
-                
-                if (el.type === 'text') {
-                    const fontSize = (el.fontSize || 16) * scale;
-                    const fontWeight = el.fontWeight || '400';
-                    ctx.fillStyle = el.color || '#1e293b';
-                    ctx.font = `${fontWeight} ${fontSize}px "Noto Sans SC", sans-serif`;
-                    ctx.textBaseline = 'top';
-                    
-                    const text = el.content || '';
-                    const chars = text.split('');
-                    let line = '';
-                    let lineY = y;
-                    const maxWidth = 300 * scale;
-                    
-                    chars.forEach(char => {
-                        const testLine = line + char;
-                        if (ctx.measureText(testLine).width > maxWidth && line) {
-                            ctx.fillText(line, x, lineY);
-                            line = char;
-                            lineY += fontSize * 1.4;
-                        } else {
-                            line = testLine;
-                        }
-                    });
-                    if (line) ctx.fillText(line, x, lineY);
-                    
-                } else if (el.type === 'shape') {
-                    ctx.fillStyle = el.bgColor || '#667eea';
-                    const size = 100 * scale;
-                    if (el.content === 'rect') {
-                        ctx.fillRect(x, y, size, size);
-                    } else if (el.content === 'circle') {
-                        ctx.beginPath();
-                        ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI * 2);
-                        ctx.fill();
-                    } else if (el.content === 'line') {
-                        ctx.fillRect(x, y + 20*scale, 150*scale, 4*scale);
-                    }
-                } else if (el.type === 'image') {
-                    const imgW = 150 * scale;
-                    const imgH = 150 * scale;
-                    const imgGradient = ctx.createLinearGradient(x, y, x + imgW, y + imgH);
-                    imgGradient.addColorStop(0, '#667eea');
-                    imgGradient.addColorStop(1, '#764ba2');
-                    ctx.fillStyle = imgGradient;
-                    ctx.fillRect(x, y, imgW, imgH);
-                    ctx.fillStyle = 'white';
-                    ctx.font = `${40 * scale}px sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('🖼️', x + imgW/2, y + imgH/2);
-                    ctx.textAlign = 'start';
-                }
-            });
-            
+
+            renderDesignToCanvas(ctx, W, H, bgStyle, appState.canvasElements, 2);
+
             ctx.strokeStyle = '#e2e8f0';
             ctx.lineWidth = 2;
             ctx.strokeRect(0, 0, W, H);
-            
+
             const link = document.createElement('a');
             link.download = `design-${Date.now()}.png`;
             link.href = targetCanvas.toDataURL('image/png');
             link.click();
-            
+
             showToast('图片已下载！', 'success');
         } catch (e) {
             console.error(e);
@@ -733,17 +774,13 @@ function exportDesign() {
     }, 800);
 }
 
-// ============ 功能2：保存作品到作品墙（持久化） ============
-function saveToGallery() {
-    if (!appState.lastScores) {
-        showToast('请先完成评分再保存', 'error');
+// ============ 保存草稿 ============
+function saveDraft() {
+    if (appState.canvasElements.length === 0) {
+        showToast('画布还是空的，先添加一些元素吧', 'error');
         return;
     }
-    
-    const title = appState.currentLevel 
-        ? `关卡${appState.currentLevel.id}: ${appState.currentLevel.title}` 
-        : '我的设计作品';
-    
+
     const bgEl = document.getElementById('canvasBg');
     const bgStyle = bgEl.style.background;
     let gradientIdx = 0;
@@ -752,19 +789,117 @@ function saveToGallery() {
     else if (bgStyle.includes('#43e97b')) gradientIdx = 3;
     else if (bgStyle.includes('#fa709a')) gradientIdx = 4;
     else if (bgStyle.includes('#30cfd0')) gradientIdx = 5;
-    
-    const newId = Date.now();
+
+    const title = appState.currentLevel
+        ? `草稿 - 关卡${appState.currentLevel.id}: ${appState.currentLevel.title}`
+        : '我的草稿';
+
+    const newId = appState.editingDraftId || Date.now();
+    const existingIdx = GameData.galleryWorks.findIndex(w => w.id === newId);
+
+    const draftWork = {
+        id: newId,
+        title: title,
+        author: '我',
+        isMine: true,
+        status: 'draft',
+        likes: 0,
+        liked: false,
+        views: 0,
+        score: 0,
+        gradientIdx: gradientIdx,
+        background: bgStyle,
+        canvasElements: JSON.parse(JSON.stringify(appState.canvasElements)),
+        levelId: appState.currentLevel?.id || null,
+        scores: null,
+        comments: [],
+        createdAt: new Date().toISOString()
+    };
+
+    if (existingIdx > -1) {
+        GameData.galleryWorks[existingIdx] = draftWork;
+    } else {
+        GameData.galleryWorks.unshift(draftWork);
+        GameData.myDrafts.unshift(newId);
+        GameData.saveMyDrafts();
+    }
+
+    GameData.saveWorks();
+    appState.editingDraftId = newId;
+
+    showToast('草稿已保存！', 'success');
+}
+
+// ============ 继续编辑草稿 ============
+function editDraft(workId) {
+    const work = GameData.galleryWorks.find(w => w.id === workId);
+    if (!work) return;
+
+    appState.editingDraftId = workId;
+    appState.canvasElements = work.canvasElements ? JSON.parse(JSON.stringify(work.canvasElements)) : [];
+    appState.lastScores = work.scores || null;
+
+    const canvasContainer = document.getElementById('canvasElements') || document.querySelector('.canvas-elements');
+    if (canvasContainer) canvasContainer.innerHTML = '';
+    appState.canvasElements.forEach(el => renderCanvasElement(el));
+
+    if (work.background) {
+        document.getElementById('canvasBg').style.background = work.background;
+    }
+
+    if (work.levelId) {
+        const level = GameData.levels.find(l => l.id === work.levelId);
+        if (level) {
+            appState.currentLevel = level;
+            document.getElementById('editorLevelTitle').textContent = `草稿 - 关卡 ${level.id}: ${level.title}`;
+        }
+    } else {
+        document.getElementById('editorLevelTitle').textContent = work.title;
+    }
+
+    closeWorkDetail();
+    goToPage('editor');
+    updateTaskRequirements();
+    showToast('已加载草稿，继续编辑吧', 'success');
+}
+
+// ============ 功能2：保存作品到作品墙（持久化） ============
+function saveToGallery() {
+    if (!appState.lastScores) {
+        showToast('请先完成评分再保存', 'error');
+        return;
+    }
+
+    const title = appState.currentLevel
+        ? `关卡${appState.currentLevel.id}: ${appState.currentLevel.title}`
+        : '我的设计作品';
+
+    const bgEl = document.getElementById('canvasBg');
+    const bgStyle = bgEl.style.background;
+    let gradientIdx = 0;
+    if (bgStyle.includes('#f093fb')) gradientIdx = 1;
+    else if (bgStyle.includes('#4facfe')) gradientIdx = 2;
+    else if (bgStyle.includes('#43e97b')) gradientIdx = 3;
+    else if (bgStyle.includes('#fa709a')) gradientIdx = 4;
+    else if (bgStyle.includes('#30cfd0')) gradientIdx = 5;
+
+    const newId = appState.editingDraftId || Date.now();
+    const existingIdx = GameData.galleryWorks.findIndex(w => w.id === newId);
+
     const newWork = {
         id: newId,
         title: title,
         author: '我',
         isMine: true,
+        status: 'published',
         likes: 0,
         liked: false,
         views: 0,
         score: appState.lastScores.total,
         gradientIdx: gradientIdx,
-        favorite: false,
+        background: bgStyle,
+        canvasElements: JSON.parse(JSON.stringify(appState.canvasElements)),
+        levelId: appState.currentLevel?.id || null,
         scores: {
             layout: appState.lastScores.layout,
             color: appState.lastScores.color,
@@ -773,20 +908,42 @@ function saveToGallery() {
         comments: [],
         createdAt: new Date().toISOString()
     };
-    
-    GameData.galleryWorks.unshift(newWork);
-    GameData.myWorks.unshift(newId);
+
+    if (existingIdx > -1) {
+        GameData.galleryWorks[existingIdx] = newWork;
+        const draftIdx = GameData.myDrafts.indexOf(newId);
+        if (draftIdx > -1) {
+            GameData.myDrafts.splice(draftIdx, 1);
+            GameData.saveMyDrafts();
+        }
+    } else {
+        GameData.galleryWorks.unshift(newWork);
+    }
+
+    if (!GameData.myWorks.includes(newId)) {
+        GameData.myWorks.unshift(newId);
+    }
     GameData.saveWorks();
     GameData.saveMyWorks();
-    
+
     GameData.user.coins += 50;
     GameData.user.exp += appState.lastScores.total;
     GameData.saveUser();
     document.getElementById('userCoins').textContent = GameData.user.coins;
     document.getElementById('userExp').textContent = GameData.user.exp;
-    
+
     appState.lastWorkId = newId;
-    showToast('作品已保存到作品墙！+50金币', 'success');
+    appState.editingDraftId = null;
+    showToast('作品已发布！+50金币', 'success');
+
+    setTimeout(() => {
+        goToPage('gallery');
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        const mineBtn = document.querySelector('.filter-btn[data-filter="mine"]');
+        if (mineBtn) mineBtn.classList.add('active');
+        appState.galleryFilter = 'mine';
+        renderGallery();
+    }, 600);
 }
 
 // ============ 功能3：解锁字体 ============
@@ -794,26 +951,26 @@ function unlockAsset(type, id, cost, btnEl) {
     const fontKeyMap = { songti: 'SimSun', kaiti: 'KaiTi', bold: 'bold' };
     const fontKey = fontKeyMap[id] || id;
     const font = GameData.fonts[fontKey];
-    
+
     if (!font) return;
-    
+
     if (GameData.user.unlockedFonts.includes(fontKey)) {
         showToast('该字体已经解锁了', '');
         return;
     }
-    
+
     if (GameData.user.coins < cost) {
         showToast(`金币不足！还需要 ${cost - GameData.user.coins} 金币`, 'error');
         return;
     }
-    
+
     GameData.user.coins -= cost;
     GameData.user.unlockedFonts.push(fontKey);
     GameData.saveUser();
-    
+
     document.getElementById('userCoins').textContent = GameData.user.coins;
     syncFontUI();
-    
+
     showToast(`成功解锁「${font.name}」！`, 'success');
 }
 
@@ -821,46 +978,70 @@ function unlockAsset(type, id, cost, btnEl) {
 function renderGallery() {
     const grid = document.getElementById('galleryGrid');
     if (!grid) return;
-    
+
     let works = [...GameData.galleryWorks];
     const filter = appState.galleryFilter;
-    
+
     if (filter === 'mine') {
-        works = works.filter(w => w.isMine);
+        works = works.filter(w => w.isMine && w.status === 'published');
+    } else if (filter === 'drafts') {
+        works = works.filter(w => w.isMine && w.status === 'draft');
+    } else if (filter === 'published') {
+        works = works.filter(w => w.status === 'published');
     } else if (filter === 'favorites') {
-        works = works.filter(w => GameData.favorites.includes(w.id));
+        works = works.filter(w => GameData.favorites.includes(w.id) && w.status === 'published');
     } else if (filter === 'popular') {
-        works = works.sort((a, b) => b.likes - a.likes);
+        works = works.filter(w => w.status === 'published').sort((a, b) => b.likes - a.likes);
+    } else {
+        works = works.filter(w => w.status === 'published');
     }
-    
+
     if (works.length === 0) {
+        const emptyTips = {
+            mine: '还没有发布作品，快去设计一个吧！',
+            drafts: '还没有草稿，编辑中点击"保存草稿"可随时保存',
+            published: '暂无公开作品',
+            favorites: '还没有收藏作品',
+            popular: '暂无热门作品',
+            all: '暂无作品'
+        };
         grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-secondary);">
             <div style="font-size:48px;margin-bottom:12px;">📭</div>
-            <p>${filter === 'mine' ? '还没有作品，快去设计一个吧！' : filter === 'favorites' ? '还没有收藏作品' : '暂无内容'}</p>
+            <p>${emptyTips[filter] || '暂无内容'}</p>
         </div>`;
         return;
     }
-    
+
     grid.innerHTML = works.map(work => {
         const isFav = GameData.favorites.includes(work.id);
-        const gradient = GameData.gradients[work.gradientIdx % GameData.gradients.length];
+        const isDraft = work.status === 'draft';
+        const thumbDataUrl = work.canvasElements ? getDesignThumbnail(work, 400, 500) : null;
+        const bgStyle = thumbDataUrl
+            ? `background-image: url(${thumbDataUrl}); background-size: cover; background-position: center top;`
+            : `background: ${work.background || GameData.gradients[work.gradientIdx % GameData.gradients.length]};`;
+
         return `
             <div class="gallery-item" onclick="openWorkDetail(${work.id})">
-                <div class="work-preview" style="background: ${gradient};">
+                <div class="work-preview" style="${bgStyle}">
+                    ${isDraft ? '<div style="position:absolute;top:8px;left:8px;background:rgba(255,152,0,0.9);color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📝 草稿</div>' : ''}
                     <div class="work-overlay">
                         <span class="work-title">${work.title}</span>
                         <div class="work-stats">
                             <span>❤️ ${work.likes}</span>
                             <span>💬 ${work.comments.length}</span>
+                            ${work.score ? `<span>🏆 ${work.score}</span>` : ''}
                         </div>
                     </div>
                 </div>
                 <div class="work-info">
                     <span class="work-author">${work.author}${work.isMine ? ' (我)' : ''}</span>
-                    <button class="btn-favorite ${isFav ? 'active' : ''}" 
-                            onclick="event.stopPropagation(); toggleFavoriteWork(${work.id}, this)">
-                        ${isFav ? '⭐' : '☆'}
-                    </button>
+                    ${isDraft
+                        ? `<button class="btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation(); editDraft(${work.id})">✏️ 继续编辑</button>`
+                        : `<button class="btn-favorite ${isFav ? 'active' : ''}" 
+                                onclick="event.stopPropagation(); toggleFavoriteWork(${work.id}, this)">
+                            ${isFav ? '⭐' : '☆'}
+                        </button>`
+                    }
                 </div>
             </div>
         `;
@@ -882,46 +1063,97 @@ function toggleFavoriteWork(workId, btnEl) {
     const idx = GameData.favorites.indexOf(workId);
     if (idx > -1) {
         GameData.favorites.splice(idx, 1);
-        btnEl.classList.remove('active');
-        btnEl.textContent = '☆';
         showToast('已取消收藏');
     } else {
         GameData.favorites.push(workId);
-        btnEl.classList.add('active');
-        btnEl.textContent = '⭐';
         showToast('已收藏作品', 'success');
     }
     GameData.saveFavorites();
-    
-    if (appState.galleryFilter === 'favorites') {
-        renderGallery();
+    renderGallery();
+
+    const id = appState.currentViewingWorkId;
+    if (id === workId) {
+        const collectBtn = document.getElementById('workDetailCollectBtn');
+        if (collectBtn) {
+            const isFav = GameData.favorites.includes(id);
+            collectBtn.textContent = isFav ? '⭐ 已收藏' : '⭐ 收藏';
+        }
     }
+}
+
+// ============ 删除评论 ============
+function deleteComment(commentId) {
+    const workId = appState.currentViewingWorkId;
+    if (!workId) return;
+    const work = GameData.galleryWorks.find(w => w.id === workId);
+    if (!work) return;
+
+    const idx = work.comments.findIndex(c => c.id === commentId);
+    if (idx === -1) return;
+
+    work.comments.splice(idx, 1);
+    GameData.saveWorks();
+    renderComments(work.comments);
+    document.getElementById('workCommentsCount').textContent = work.comments.length;
+    renderGallery();
+    showToast('评论已删除');
 }
 
 // ============ 作品详情 ============
 function openWorkDetail(id) {
     const work = GameData.galleryWorks.find(w => w.id === id);
     if (!work) return;
-    
+
     appState.currentViewingWorkId = id;
-    work.views = (work.views || 0) + 1;
-    GameData.saveWorks();
-    
-    const gradient = GameData.gradients[work.gradientIdx % GameData.gradients.length];
-    document.getElementById('workLargePreview').style.background = gradient;
+    if (work.status === 'published') {
+        work.views = (work.views || 0) + 1;
+        GameData.saveWorks();
+    }
+
+    const previewEl = document.getElementById('workLargePreview');
+    const detailCanvas = document.getElementById('workDetailCanvas');
+    if (work.canvasElements && detailCanvas) {
+        previewEl.style.background = 'transparent';
+        const W = 400, H = 560;
+        detailCanvas.width = W * 2;
+        detailCanvas.height = H * 2;
+        detailCanvas.style.width = W + 'px';
+        detailCanvas.style.height = H + 'px';
+        const ctx = detailCanvas.getContext('2d');
+        renderDesignToCanvas(ctx, W * 2, H * 2, work.background, work.canvasElements, 2);
+    } else {
+        previewEl.style.background = work.background || GameData.gradients[work.gradientIdx % GameData.gradients.length];
+        if (detailCanvas) {
+            const ctx = detailCanvas.getContext('2d');
+            ctx.clearRect(0, 0, detailCanvas.width, detailCanvas.height);
+        }
+    }
+
     document.getElementById('workDetailTitle').textContent = work.title;
-    document.getElementById('workDetailAuthor').textContent = 'by ' + work.author + (work.isMine ? ' (我)' : '');
+    document.getElementById('workDetailAuthor').textContent = 'by ' + work.author + (work.isMine ? ' (我)' : '') + (work.status === 'draft' ? ' · 草稿' : '');
     document.getElementById('workLikes').textContent = work.likes;
     document.getElementById('workCommentsCount').textContent = work.comments.length;
     document.getElementById('workViews').textContent = (work.views || 0).toLocaleString();
     document.getElementById('workScore').textContent = work.score || '-';
-    
+
     const isFav = GameData.favorites.includes(id);
     const collectBtn = document.getElementById('workDetailCollectBtn');
     collectBtn.textContent = isFav ? '⭐ 已收藏' : '⭐ 收藏';
-    
+    collectBtn.style.display = work.status === 'draft' ? 'none' : '';
+
+    const likeBtn = collectBtn.previousElementSibling;
+    if (likeBtn && likeBtn.textContent.includes('点赞')) {
+        likeBtn.style.display = work.status === 'draft' ? 'none' : '';
+    }
+
+    const commentInput = document.getElementById('commentInput');
+    const sendBtn = commentInput?.nextElementSibling;
+    if (commentInput) commentInput.style.display = work.status === 'draft' ? 'none' : '';
+    if (sendBtn) sendBtn.style.display = work.status === 'draft' ? 'none' : '';
+
     const scoresContainer = document.getElementById('workScoresContainer');
     if (work.scores) {
+        scoresContainer.style.display = '';
         scoresContainer.innerHTML = `
             <div class="work-score-item">
                 <span>版式</span>
@@ -939,10 +1171,50 @@ function openWorkDetail(id) {
                 <span>${work.scores.creativity}</span>
             </div>
         `;
+    } else {
+        scoresContainer.style.display = 'none';
     }
-    
+
+    if (work.status === 'draft' && work.isMine) {
+        let actionsDiv = document.getElementById('draftActions');
+        if (!actionsDiv) {
+            actionsDiv = document.createElement('div');
+            actionsDiv.id = 'draftActions';
+            actionsDiv.style.cssText = 'margin-top:12px;display:flex;gap:8px;';
+            scoresContainer.parentNode.insertBefore(actionsDiv, scoresContainer);
+        }
+        actionsDiv.innerHTML = `
+            <button class="btn-primary" onclick="editDraft(${work.id})">✏️ 继续编辑</button>
+            <button class="btn-secondary" onclick="deleteWork(${work.id})">🗑️ 删除草稿</button>
+        `;
+    } else {
+        const actionsDiv = document.getElementById('draftActions');
+        if (actionsDiv) actionsDiv.remove();
+    }
+
     renderComments(work.comments);
     document.getElementById('workDetailModal').classList.add('active');
+}
+
+function deleteWork(workId) {
+    const idx = GameData.galleryWorks.findIndex(w => w.id === workId);
+    if (idx === -1) return;
+
+    GameData.galleryWorks.splice(idx, 1);
+
+    const mi = GameData.myWorks.indexOf(workId);
+    if (mi > -1) { GameData.myWorks.splice(mi, 1); GameData.saveMyWorks(); }
+
+    const di = GameData.myDrafts.indexOf(workId);
+    if (di > -1) { GameData.myDrafts.splice(di, 1); GameData.saveMyDrafts(); }
+
+    const fi = GameData.favorites.indexOf(workId);
+    if (fi > -1) { GameData.favorites.splice(fi, 1); GameData.saveFavorites(); }
+
+    GameData.saveWorks();
+    closeWorkDetail();
+    renderGallery();
+    showToast('草稿已删除');
 }
 
 function closeWorkDetail() {
@@ -970,10 +1242,10 @@ function likeWork() {
 function collectWork() {
     const id = appState.currentViewingWorkId;
     if (!id) return;
-    
+
     const idx = GameData.favorites.indexOf(id);
     const collectBtn = document.getElementById('workDetailCollectBtn');
-    
+
     if (idx > -1) {
         GameData.favorites.splice(idx, 1);
         collectBtn.textContent = '⭐ 收藏';
@@ -999,10 +1271,11 @@ function renderComments(comments) {
     container.innerHTML = comments.map(c => `
         <div class="comment-item">
             <div class="comment-avatar">${c.avatar || c.author.charAt(0).toUpperCase()}</div>
-            <div class="comment-content">
+            <div class="comment-content" style="flex:1;">
                 <span class="comment-author">${c.author}</span>
                 <p>${c.content}</p>
             </div>
+            ${c.isMine ? `<button class="btn-icon" onclick="deleteComment(${c.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;" title="删除评论">🗑️</button>` : ''}
         </div>
     `).join('');
 }
@@ -1010,24 +1283,26 @@ function renderComments(comments) {
 function submitComment() {
     const id = appState.currentViewingWorkId;
     if (!id) return;
-    
+
     const input = document.getElementById('commentInput');
     const content = input.value.trim();
-    
+
     if (!content) {
         showToast('请输入评论内容', 'error');
         return;
     }
-    
+
     const work = GameData.galleryWorks.find(w => w.id === id);
     if (!work) return;
-    
+
     work.comments.push({
+        id: Date.now(),
         author: '我',
         avatar: '我',
-        content: content
+        content: content,
+        isMine: true
     });
-    
+
     GameData.saveWorks();
     renderComments(work.comments);
     document.getElementById('workCommentsCount').textContent = work.comments.length;

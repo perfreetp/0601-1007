@@ -122,25 +122,25 @@ const GameData = {
         }
     ],
 
-    // 作品数据（含默认社区作品）
     galleryWorks: Storage.get('works', [
-        { id: 1, title: '夏日音乐节', author: '设计师小明', isMine: false, likes: 128, liked: false, views: 1024, score: 85, gradientIdx: 0, favorite: true, scores: { layout: 90, color: 85, creativity: 92 }, comments: [
-            { author: 'UserA', avatar: 'A', content: '配色很棒！学习了~' },
-            { author: 'UserB', avatar: 'B', content: '排版很有创意！' }
+        { id: 1, title: '夏日音乐节', author: '设计师小明', isMine: false, status: 'published', likes: 128, liked: false, views: 1024, score: 85, gradientIdx: 0, background: 'linear-gradient(135deg, #667eea, #764ba2)', canvasElements: null, scores: { layout: 90, color: 85, creativity: 92 }, comments: [
+            { id: 101, author: 'UserA', avatar: 'A', content: '配色很棒！学习了~', isMine: false },
+            { id: 102, author: 'UserB', avatar: 'B', content: '排版很有创意！', isMine: false }
         ]},
-        { id: 2, title: '美食嘉年华', author: '创意达人', isMine: false, likes: 96, liked: false, views: 856, score: 78, gradientIdx: 1, favorite: false, scores: { layout: 78, color: 82, creativity: 75 }, comments: [
-            { author: 'FoodLover', avatar: 'F', content: '看着就有食欲！' }
+        { id: 2, title: '美食嘉年华', author: '创意达人', isMine: false, status: 'published', likes: 96, liked: false, views: 856, score: 78, gradientIdx: 1, background: 'linear-gradient(135deg, #f093fb, #f5576c)', canvasElements: null, scores: { layout: 78, color: 82, creativity: 75 }, comments: [
+            { id: 201, author: 'FoodLover', avatar: 'F', content: '看着就有食欲！', isMine: false }
         ]},
-        { id: 3, title: '科技峰会', author: 'TechDesigner', isMine: false, likes: 156, liked: false, views: 1280, score: 92, gradientIdx: 2, favorite: true, scores: { layout: 95, color: 90, creativity: 90 }, comments: [
-            { author: 'Geek', avatar: 'G', content: '未来感十足' }
+        { id: 3, title: '科技峰会', author: 'TechDesigner', isMine: false, status: 'published', likes: 156, liked: false, views: 1280, score: 92, gradientIdx: 2, background: 'linear-gradient(135deg, #4facfe, #00f2fe)', canvasElements: null, scores: { layout: 95, color: 90, creativity: 90 }, comments: [
+            { id: 301, author: 'Geek', avatar: 'G', content: '未来感十足', isMine: false }
         ]},
-        { id: 4, title: '环保公益海报', author: 'GreenArtist', isMine: false, likes: 88, liked: false, views: 640, score: 80, gradientIdx: 3, favorite: false, scores: { layout: 80, color: 85, creativity: 78 }, comments: [] },
-        { id: 5, title: '艺术展览', author: 'ArtLover', isMine: false, likes: 203, liked: false, views: 1536, score: 91, gradientIdx: 4, favorite: false, scores: { layout: 88, color: 92, creativity: 95 }, comments: [] },
-        { id: 6, title: '运动会海报', author: 'SportDesign', isMine: false, likes: 167, liked: false, views: 1100, score: 87, gradientIdx: 5, favorite: true, scores: { layout: 85, color: 88, creativity: 89 }, comments: [] }
+        { id: 4, title: '环保公益海报', author: 'GreenArtist', isMine: false, status: 'published', likes: 88, liked: false, views: 640, score: 80, gradientIdx: 3, background: 'linear-gradient(135deg, #43e97b, #38f9d7)', canvasElements: null, scores: { layout: 80, color: 85, creativity: 78 }, comments: [] },
+        { id: 5, title: '艺术展览', author: 'ArtLover', isMine: false, status: 'published', likes: 203, liked: false, views: 1536, score: 91, gradientIdx: 4, background: 'linear-gradient(135deg, #fa709a, #fee140)', canvasElements: null, scores: { layout: 88, color: 92, creativity: 95 }, comments: [] },
+        { id: 6, title: '运动会海报', author: 'SportDesign', isMine: false, status: 'published', likes: 167, liked: false, views: 1100, score: 87, gradientIdx: 5, background: 'linear-gradient(135deg, #30cfd0, #330867)', canvasElements: null, scores: { layout: 85, color: 88, creativity: 89 }, comments: [] }
     ]),
 
     favorites: Storage.get('favorites', [3, 6, 1]),
     myWorks: Storage.get('myWorks', []),
+    myDrafts: Storage.get('myDrafts', []),
 
     dailyTasks: [
         { id: 1, title: '完成1个版式关卡', reward: 50, done: true },
@@ -151,5 +151,6 @@ const GameData = {
     saveUser() { Storage.set('user', this.user); },
     saveWorks() { Storage.set('works', this.galleryWorks); },
     saveFavorites() { Storage.set('favorites', this.favorites); },
-    saveMyWorks() { Storage.set('myWorks', this.myWorks); }
+    saveMyWorks() { Storage.set('myWorks', this.myWorks); },
+    saveMyDrafts() { Storage.set('myDrafts', this.myDrafts); }
 };
