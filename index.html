@@ -552,12 +552,48 @@
             <div class="scoring-actions">
                 <button class="btn-secondary" onclick="goToPage('levels')">返回关卡</button>
                 <button class="btn-secondary" onclick="exportDesign()">导出练习图</button>
-                <button class="btn-secondary" onclick="saveToGallery()">保存到作品墙</button>
+                <button class="btn-secondary" onclick="openPublishModal()">保存到作品墙</button>
                 <button class="btn-secondary" onclick="shareScore()">分享成绩卡</button>
                 <button class="btn-primary" onclick="nextLevel()">下一关</button>
             </div>
         </div>
     </section>
+
+    <!-- 发布范围选择弹窗 -->
+    <div id="publishModal" class="modal">
+        <div class="modal-content" style="max-width:440px;">
+            <button class="modal-close" onclick="closePublishModal()">×</button>
+            <h2 style="margin-bottom:8px;">发布作品</h2>
+            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">选择作品的可见范围</p>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">
+                <label style="display:flex;align-items:center;gap:12px;padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;" class="publish-option" data-value="draft">
+                    <input type="radio" name="publishVisibility" value="draft" style="width:18px;height:18px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:600;">📝 保存为草稿</div>
+                        <div style="font-size:12px;color:var(--text-secondary);">仅自己可见，可继续编辑，不参与任何排序</div>
+                    </div>
+                </label>
+                <label style="display:flex;align-items:center;gap:12px;padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;" class="publish-option" data-value="private">
+                    <input type="radio" name="publishVisibility" value="private" style="width:18px;height:18px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:600;">🔒 仅自己可见</div>
+                        <div style="font-size:12px;color:var(--text-secondary);">只有你能查看，不进入热门和公开列表</div>
+                    </div>
+                </label>
+                <label style="display:flex;align-items:center;gap:12px;padding:14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;" class="publish-option" data-value="public">
+                    <input type="radio" name="publishVisibility" value="public" checked style="width:18px;height:18px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:600;">🌍 公开发布</div>
+                        <div style="font-size:12px;color:var(--text-secondary);">所有人可见，参与热门排序，可被收藏和评论</div>
+                    </div>
+                </label>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn-secondary" onclick="closePublishModal()">取消</button>
+                <button class="btn-primary" onclick="confirmPublish()">确认发布</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 素材仓库页面 -->
     <section id="page-assets" class="page">
@@ -734,15 +770,29 @@
     <!-- 作品墙页面 -->
     <section id="page-gallery" class="page">
         <div class="page-header">
-            <h1>🖼️ 作品墙</h1>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <h1 style="margin:0;">🖼️ 作品墙</h1>
+                <button id="batchManageBtn" class="btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="enterBatchMode()">☑️ 批量管理</button>
+            </div>
             <p class="page-subtitle">展示你的创意，欣赏他人作品</p>
             <div class="gallery-filters">
                 <button class="filter-btn active" data-filter="all">全部</button>
                 <button class="filter-btn" data-filter="mine">我的作品</button>
                 <button class="filter-btn" data-filter="drafts">我的草稿</button>
+                <button class="filter-btn" data-filter="private">仅自己可见</button>
                 <button class="filter-btn" data-filter="published">已发布</button>
                 <button class="filter-btn" data-filter="favorites">我的收藏</button>
                 <button class="filter-btn" data-filter="popular">热门</button>
+            </div>
+            <div id="batchManageBar" style="display:none;margin-top:12px;padding:12px 16px;background:var(--bg-secondary);border-radius:10px;align-items:center;gap:12px;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                    <input type="checkbox" id="selectAllWorks" onchange="toggleSelectAllWorks(this)"> 全选
+                </label>
+                <span id="selectedCountLabel" style="font-size:13px;color:var(--text-secondary);">已选 0 项</span>
+                <div style="flex:1;"></div>
+                <button class="btn-secondary" onclick="batchDeleteWorks()">🗑️ 批量删除</button>
+                <button class="btn-primary" onclick="batchExportWorks()">📥 批量导出</button>
+                <button class="btn-secondary" onclick="exitBatchMode()">退出</button>
             </div>
         </div>
 
@@ -762,6 +812,7 @@
                         <p class="work-detail-author" id="workDetailAuthor">by 设计师小明</p>
                         <div class="work-detail-stats">
                             <span>❤️ <span id="workLikes">128</span></span>
+                            <span>⭐ <span id="workFavorites">42</span> 收藏</span>
                             <span>💬 <span id="workCommentsCount">24</span></span>
                             <span>👁️ <span id="workViews">1,024</span></span>
                             <span>🏆 <span id="workScore">85</span>分</span>
@@ -790,6 +841,14 @@
                         </div>
                         <h3>评论区</h3>
                         <div class="comments-section" id="commentsSection">
+                        </div>
+                        <div id="replyInputContainer" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--bg-secondary);border-radius:8px;font-size:13px;">
+                            <span id="replyToLabel" style="color:var(--text-secondary);">回复 @UserA：</span>
+                            <input type="text" id="replyInput" placeholder="写下你的回复..." style="flex:1;margin-top:6px;">
+                            <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;">
+                                <button class="btn-secondary" onclick="cancelReply()" style="padding:4px 10px;font-size:12px;">取消</button>
+                                <button class="btn-primary" onclick="submitReply()" style="padding:4px 10px;font-size:12px;">发送</button>
+                            </div>
                         </div>
                         <div class="comment-input">
                             <input type="text" id="commentInput" placeholder="发表你的评论...">

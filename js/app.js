@@ -15,8 +15,25 @@ let appState = {
     lastScores: null,
     lastWorkId: null,
     galleryFilter: 'all',
-    currentViewingWorkId: null
+    currentViewingWorkId: null,
+    replyingToCommentId: null,
+    editingDraftId: null,
+    batchMode: false,
+    selectedWorkIds: []
 };
+
+// ============ 图片预加载缓存 ============
+const _imgCache = new Map();
+function loadImage(url) {
+    return new Promise((resolve) => {
+        if (_imgCache.has(url)) { resolve(_imgCache.get(url)); return; }
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => { _imgCache.set(url, img); resolve(img); };
+        img.onerror = () => { _imgCache.set(url, null); resolve(null); };
+        img.src = url;
+    });
+}
 
 // ============ 页面导航 ============
 function goToPage(pageName) {
@@ -96,10 +113,7 @@ function parseGradient(style) {
     return ['#f8fafc', '#e2e8f0'];
 }
 
-function renderDesignToCanvas(ctx, W, H, bgStyle, elements, scale) {
-    scale = scale || 2;
-    ctx.clearRect(0, 0, W, H);
-
+function _renderBackground(ctx, W, H, bgStyle) {
     const bg = bgStyle || 'linear-gradient(135deg, #f8fafc, #e2e8f0)';
     if (bg.startsWith('#') || bg.startsWith('rgb')) {
         ctx.fillStyle = bg;
@@ -112,7 +126,31 @@ function renderDesignToCanvas(ctx, W, H, bgStyle, elements, scale) {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, W, H);
     }
+}
 
+function _renderImagePlaceholder(ctx, x, y, w, h, bgColor) {
+    const imgGradient = ctx.createLinearGradient(x, y, x + w, y + h);
+    const imgColors = parseGradient(bgColor || '#667eea');
+    imgGradient.addColorStop(0, imgColors[0]);
+    imgGradient.addColorStop(1, imgColors[1]);
+    ctx.fillStyle = imgGradient;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.font = `${36 * (w / 150)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🖼️', x + w / 2, y + h / 2);
+    ctx.textAlign = 'start';
+}
+
+// 同步版本（缩略图使用，图片使用占位）
+function renderDesignToCanvas(ctx, W, H, bgStyle, elements, scale) {
+    scale = scale || 2;
+    ctx.clearRect(0, 0, W, H);
+    _renderBackground(ctx, W, H, bgStyle);
     if (!elements) return;
 
     elements.forEach(el => {
@@ -152,31 +190,81 @@ function renderDesignToCanvas(ctx, W, H, bgStyle, elements, scale) {
                 ctx.fillRect(x, y, size, size);
             } else if (el.content === 'circle') {
                 ctx.beginPath();
-                ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI * 2);
+                ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
                 ctx.fill();
             } else if (el.content === 'line') {
-                ctx.fillRect(x, y + 20*scale, 150*scale, 4*scale);
+                ctx.fillRect(x, y + 20 * scale, 150 * scale, 4 * scale);
             }
         } else if (el.type === 'image') {
             const imgW = 150 * scale;
             const imgH = 150 * scale;
-            const imgGradient = ctx.createLinearGradient(x, y, x + imgW, y + imgH);
-            const imgColors = parseGradient(el.bgColor || '#667eea');
-            imgGradient.addColorStop(0, imgColors[0]);
-            imgGradient.addColorStop(1, imgColors[1]);
-            ctx.fillStyle = imgGradient;
-            ctx.fillRect(x, y, imgW, imgH);
-            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x, y, imgW, imgH);
-            ctx.fillStyle = 'rgba(255,255,255,0.8)';
-            ctx.font = `${36 * scale}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('🖼️', x + imgW/2, y + imgH/2);
-            ctx.textAlign = 'start';
+            _renderImagePlaceholder(ctx, x, y, imgW, imgH, el.bgColor);
         }
     });
+}
+
+// 异步版本（导出和详情使用，图片真实渲染）
+async function renderDesignToCanvasAsync(ctx, W, H, bgStyle, elements, scale) {
+    scale = scale || 2;
+    ctx.clearRect(0, 0, W, H);
+    _renderBackground(ctx, W, H, bgStyle);
+    if (!elements) return;
+
+    for (const el of elements) {
+        const x = el.x * scale;
+        const y = el.y * scale;
+
+        if (el.type === 'text') {
+            const fontSize = (el.fontSize || 16) * scale;
+            const fontWeight = el.fontWeight || '400';
+            ctx.fillStyle = el.color || '#1e293b';
+            const fontFamily = getFontCSS(el.fontFamily || 'Noto Sans SC');
+            ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+            ctx.textBaseline = 'top';
+            const text = el.content || '';
+            const chars = text.split('');
+            let line = '';
+            let lineY = y;
+            const maxWidth = 300 * scale;
+            chars.forEach(char => {
+                const testLine = line + char;
+                if (ctx.measureText(testLine).width > maxWidth && line) {
+                    ctx.fillText(line, x, lineY);
+                    line = char;
+                    lineY += fontSize * 1.4;
+                } else {
+                    line = testLine;
+                }
+            });
+            if (line) ctx.fillText(line, x, lineY);
+
+        } else if (el.type === 'shape') {
+            ctx.fillStyle = el.bgColor || '#667eea';
+            const size = 100 * scale;
+            if (el.content === 'rect') {
+                ctx.fillRect(x, y, size, size);
+            } else if (el.content === 'circle') {
+                ctx.beginPath();
+                ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (el.content === 'line') {
+                ctx.fillRect(x, y + 20 * scale, 150 * scale, 4 * scale);
+            }
+        } else if (el.type === 'image') {
+            const imgW = 150 * scale;
+            const imgH = 150 * scale;
+            if (el.content && !el.content.startsWith('data:image/svg')) {
+                const realImg = await loadImage(el.content);
+                if (realImg) {
+                    try {
+                        ctx.drawImage(realImg, x, y, imgW, imgH);
+                        continue;
+                    } catch (e) { /* fall through to placeholder */ }
+                }
+            }
+            _renderImagePlaceholder(ctx, x, y, imgW, imgH, el.bgColor);
+        }
+    }
 }
 
 function getDesignThumbnail(work, thumbW, thumbH) {
@@ -507,9 +595,31 @@ function renderPropertyPanel(element) {
     panel.innerHTML = html;
 }
 
-function getFontCSS(fontKey) {
-    const font = GameData.fonts[fontKey];
-    return font ? font.cssFamily : "'Noto Sans SC', sans-serif";
+function getFontCSS(fontFamily) {
+    const font = GameData.fonts[fontFamily];
+    const cssFamily = font ? font.cssFamily : "'Noto Sans SC', sans-serif";
+    if (font && font.cssUrl) {
+        const existing = document.querySelector(`link[data-font="${fontFamily}"]`);
+        if (!existing) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = font.cssUrl;
+            link.setAttribute('data-font', fontFamily);
+            document.head.appendChild(link);
+        }
+    }
+    return cssFamily;
+}
+
+function _totalCommentsCount(work) {
+    if (!work || !work.comments) return 0;
+    let total = work.comments.length;
+    work.comments.forEach(c => {
+        if (c.replies && c.replies.length) {
+            total += c.replies.length;
+        }
+    });
+    return total;
 }
 
 function updateElementProp(prop, value) {
@@ -740,47 +850,58 @@ function nextLevel() {
     }
 }
 
-// ============ 功能1：真实导出画布图片 ============
-function exportDesign() {
+// ============ 功能1：真实导出画布图片（异步真实图片渲染） ============
+async function exportDesign() {
     showToast('正在生成图片...', 'success');
 
-    setTimeout(() => {
-        try {
-            const W = 800, H = 1120;
-            const targetCanvas = document.createElement('canvas');
-            targetCanvas.width = W;
-            targetCanvas.height = H;
-            const ctx = targetCanvas.getContext('2d');
+    try {
+        const W = 800, H = 1120;
+        const targetCanvas = document.createElement('canvas');
+        targetCanvas.width = W;
+        targetCanvas.height = H;
+        const ctx = targetCanvas.getContext('2d');
 
-            const bgEl = document.getElementById('canvasBg');
-            const bgStyle = bgEl.style.background || 'linear-gradient(135deg, #f8fafc, #e2e8f0)';
+        const bgEl = document.getElementById('canvasBg');
+        const bgStyle = bgEl.style.background || 'linear-gradient(135deg, #f8fafc, #e2e8f0)';
 
-            renderDesignToCanvas(ctx, W, H, bgStyle, appState.canvasElements, 2);
+        await renderDesignToCanvasAsync(ctx, W, H, bgStyle, appState.canvasElements, 2);
 
-            ctx.strokeStyle = '#e2e8f0';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(0, 0, W, H);
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, W, H);
 
-            const link = document.createElement('a');
-            link.download = `design-${Date.now()}.png`;
-            link.href = targetCanvas.toDataURL('image/png');
-            link.click();
+        const link = document.createElement('a');
+        link.download = `design-${Date.now()}.png`;
+        link.href = targetCanvas.toDataURL('image/png');
+        link.click();
 
-            showToast('图片已下载！', 'success');
-        } catch (e) {
-            console.error(e);
-            showToast('导出失败，请重试', 'error');
-        }
-    }, 800);
+        showToast('图片已下载！', 'success');
+    } catch (e) {
+        console.error(e);
+        showToast('导出失败，请重试', 'error');
+    }
 }
 
-// ============ 保存草稿 ============
-function saveDraft() {
-    if (appState.canvasElements.length === 0) {
-        showToast('画布还是空的，先添加一些元素吧', 'error');
+// ============ 发布范围弹窗 ============
+function openPublishModal() {
+    if (!appState.lastScores) {
+        showToast('请先完成评分再保存', 'error');
         return;
     }
+    document.getElementById('publishModal').classList.add('active');
+}
+function closePublishModal() {
+    document.getElementById('publishModal').classList.remove('active');
+}
+function confirmPublish() {
+    const selected = document.querySelector('input[name="publishVisibility"]:checked');
+    const visibility = selected ? selected.value : 'public';
+    closePublishModal();
+    saveToGallery(visibility);
+}
 
+// ============ 保存草稿（带visibility） ============
+function _buildWorkBase(visibility) {
     const bgEl = document.getElementById('canvasBg');
     const bgStyle = bgEl.style.background;
     let gradientIdx = 0;
@@ -791,28 +912,34 @@ function saveDraft() {
     else if (bgStyle.includes('#30cfd0')) gradientIdx = 5;
 
     const title = appState.currentLevel
+        ? `关卡${appState.currentLevel.id}: ${appState.currentLevel.title}`
+        : '我的设计作品';
+
+    const newId = appState.editingDraftId || Date.now();
+
+    return { bgStyle, gradientIdx, title, newId };
+}
+
+function saveDraft() {
+    if (appState.canvasElements.length === 0) {
+        showToast('画布还是空的，先添加一些元素吧', 'error');
+        return;
+    }
+    const { bgStyle, gradientIdx, newId } = _buildWorkBase('draft');
+    const existingIdx = GameData.galleryWorks.findIndex(w => w.id === newId);
+
+    const title = appState.currentLevel
         ? `草稿 - 关卡${appState.currentLevel.id}: ${appState.currentLevel.title}`
         : '我的草稿';
 
-    const newId = appState.editingDraftId || Date.now();
-    const existingIdx = GameData.galleryWorks.findIndex(w => w.id === newId);
-
     const draftWork = {
-        id: newId,
-        title: title,
-        author: '我',
-        isMine: true,
-        status: 'draft',
-        likes: 0,
-        liked: false,
-        views: 0,
-        score: 0,
-        gradientIdx: gradientIdx,
-        background: bgStyle,
+        id: newId, title, author: '我', isMine: true,
+        status: 'draft', visibility: 'draft',
+        likes: 0, liked: false, favoriteCount: 0, views: 0,
+        score: 0, gradientIdx, background: bgStyle,
         canvasElements: JSON.parse(JSON.stringify(appState.canvasElements)),
         levelId: appState.currentLevel?.id || null,
-        scores: null,
-        comments: [],
+        scores: null, comments: [], pinnedCommentId: null,
         createdAt: new Date().toISOString()
     };
 
@@ -820,13 +947,13 @@ function saveDraft() {
         GameData.galleryWorks[existingIdx] = draftWork;
     } else {
         GameData.galleryWorks.unshift(draftWork);
-        GameData.myDrafts.unshift(newId);
-        GameData.saveMyDrafts();
+        if (!GameData.myDrafts.includes(newId)) {
+            GameData.myDrafts.unshift(newId);
+            GameData.saveMyDrafts();
+        }
     }
-
     GameData.saveWorks();
     appState.editingDraftId = newId;
-
     showToast('草稿已保存！', 'success');
 }
 
@@ -863,41 +990,28 @@ function editDraft(workId) {
     showToast('已加载草稿，继续编辑吧', 'success');
 }
 
-// ============ 功能2：保存作品到作品墙（持久化） ============
-function saveToGallery() {
+// ============ 保存作品到作品墙（支持 visibility） ============
+function saveToGallery(visibility) {
     if (!appState.lastScores) {
         showToast('请先完成评分再保存', 'error');
         return;
     }
+    visibility = visibility || 'public';
 
-    const title = appState.currentLevel
-        ? `关卡${appState.currentLevel.id}: ${appState.currentLevel.title}`
-        : '我的设计作品';
-
-    const bgEl = document.getElementById('canvasBg');
-    const bgStyle = bgEl.style.background;
-    let gradientIdx = 0;
-    if (bgStyle.includes('#f093fb')) gradientIdx = 1;
-    else if (bgStyle.includes('#4facfe')) gradientIdx = 2;
-    else if (bgStyle.includes('#43e97b')) gradientIdx = 3;
-    else if (bgStyle.includes('#fa709a')) gradientIdx = 4;
-    else if (bgStyle.includes('#30cfd0')) gradientIdx = 5;
-
-    const newId = appState.editingDraftId || Date.now();
+    const { bgStyle, gradientIdx, title, newId } = _buildWorkBase(visibility);
     const existingIdx = GameData.galleryWorks.findIndex(w => w.id === newId);
 
+    const status = visibility === 'draft' ? 'draft' : 'published';
+
     const newWork = {
-        id: newId,
-        title: title,
-        author: '我',
-        isMine: true,
-        status: 'published',
-        likes: 0,
-        liked: false,
-        views: 0,
+        id: newId, title, author: '我', isMine: true,
+        status: status, visibility: visibility,
+        likes: existingIdx > -1 ? GameData.galleryWorks[existingIdx].likes : 0,
+        liked: existingIdx > -1 ? GameData.galleryWorks[existingIdx].liked : false,
+        favoriteCount: existingIdx > -1 ? (GameData.galleryWorks[existingIdx].favoriteCount || 0) : 0,
+        views: existingIdx > -1 ? (GameData.galleryWorks[existingIdx].views || 0) : 0,
         score: appState.lastScores.total,
-        gradientIdx: gradientIdx,
-        background: bgStyle,
+        gradientIdx, background: bgStyle,
         canvasElements: JSON.parse(JSON.stringify(appState.canvasElements)),
         levelId: appState.currentLevel?.id || null,
         scores: {
@@ -905,43 +1019,53 @@ function saveToGallery() {
             color: appState.lastScores.color,
             creativity: appState.lastScores.creativity
         },
-        comments: [],
-        createdAt: new Date().toISOString()
+        comments: existingIdx > -1 ? GameData.galleryWorks[existingIdx].comments || [] : [],
+        pinnedCommentId: existingIdx > -1 ? GameData.galleryWorks[existingIdx].pinnedCommentId || null : null,
+        createdAt: existingIdx > -1 ? GameData.galleryWorks[existingIdx].createdAt : new Date().toISOString()
     };
 
     if (existingIdx > -1) {
         GameData.galleryWorks[existingIdx] = newWork;
-        const draftIdx = GameData.myDrafts.indexOf(newId);
-        if (draftIdx > -1) {
-            GameData.myDrafts.splice(draftIdx, 1);
-            GameData.saveMyDrafts();
-        }
+        const di = GameData.myDrafts.indexOf(newId);
+        if (di > -1) { GameData.myDrafts.splice(di, 1); GameData.saveMyDrafts(); }
     } else {
         GameData.galleryWorks.unshift(newWork);
     }
 
-    if (!GameData.myWorks.includes(newId)) {
-        GameData.myWorks.unshift(newId);
+    // 根据 visibility 更新对应列表
+    if (visibility === 'private') {
+        if (GameData.myPrivate.indexOf(newId) === -1) GameData.myPrivate.unshift(newId);
+        GameData.saveMyPrivate();
+    } else if (visibility === 'public') {
+        if (GameData.myWorks.indexOf(newId) === -1) GameData.myWorks.unshift(newId);
+        GameData.saveMyWorks();
+    } else if (visibility === 'draft') {
+        if (GameData.myDrafts.indexOf(newId) === -1) GameData.myDrafts.unshift(newId);
+        GameData.saveMyDrafts();
     }
     GameData.saveWorks();
-    GameData.saveMyWorks();
 
-    GameData.user.coins += 50;
-    GameData.user.exp += appState.lastScores.total;
-    GameData.saveUser();
-    document.getElementById('userCoins').textContent = GameData.user.coins;
-    document.getElementById('userExp').textContent = GameData.user.exp;
+    if (visibility !== 'draft') {
+        GameData.user.coins += 50;
+        GameData.user.exp += appState.lastScores.total;
+        GameData.saveUser();
+        document.getElementById('userCoins').textContent = GameData.user.coins;
+        document.getElementById('userExp').textContent = GameData.user.exp;
+    }
 
     appState.lastWorkId = newId;
     appState.editingDraftId = null;
-    showToast('作品已发布！+50金币', 'success');
+
+    const tipMap = { draft: '草稿已保存！', private: '已保存为仅自己可见！', public: '作品已发布！+50金币' };
+    showToast(tipMap[visibility] || '保存成功', 'success');
 
     setTimeout(() => {
         goToPage('gallery');
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        const mineBtn = document.querySelector('.filter-btn[data-filter="mine"]');
-        if (mineBtn) mineBtn.classList.add('active');
-        appState.galleryFilter = 'mine';
+        let targetFilter = visibility === 'draft' ? 'drafts' : (visibility === 'private' ? 'private' : 'mine');
+        const btn = document.querySelector(`.filter-btn[data-filter="${targetFilter}"]`);
+        if (btn) btn.classList.add('active');
+        appState.galleryFilter = targetFilter;
         renderGallery();
     }, 600);
 }
@@ -986,20 +1110,43 @@ function renderGallery() {
         works = works.filter(w => w.isMine && w.status === 'published');
     } else if (filter === 'drafts') {
         works = works.filter(w => w.isMine && w.status === 'draft');
+    } else if (filter === 'private') {
+        works = works.filter(w => w.isMine && w.visibility === 'private');
     } else if (filter === 'published') {
-        works = works.filter(w => w.status === 'published');
+        works = works.filter(w => w.visibility === 'public');
     } else if (filter === 'favorites') {
-        works = works.filter(w => GameData.favorites.includes(w.id) && w.status === 'published');
+        works = works.filter(w => GameData.favorites.includes(w.id) && w.visibility === 'public');
     } else if (filter === 'popular') {
-        works = works.filter(w => w.status === 'published').sort((a, b) => b.likes - a.likes);
+        works = works.filter(w => w.visibility === 'public').sort((a, b) => {
+            const scoreA = (a.likes || 0) * 2 + (a.favoriteCount || 0) * 3;
+            const scoreB = (b.likes || 0) * 2 + (b.favoriteCount || 0) * 3;
+            return scoreB - scoreA;
+        });
     } else {
-        works = works.filter(w => w.status === 'published');
+        works = works.filter(w => w.visibility === 'public');
+    }
+
+    const showBatchBtn = ['mine', 'drafts', 'private'].includes(filter);
+    const batchBar = document.getElementById('batchManageBar');
+    if (batchBar) {
+        batchBar.style.display = appState.batchMode ? 'flex' : 'none';
+        if (appState.batchMode) {
+            const countEl = document.getElementById('selectedCountLabel');
+            if (countEl) countEl.textContent = `已选 ${appState.selectedWorkIds.length} 项`;
+        }
+    }
+    const batchBtn = document.getElementById('batchManageBtn');
+    if (batchBtn) {
+        batchBtn.style.display = showBatchBtn ? '' : 'none';
+        batchBtn.textContent = appState.batchMode ? '✖ 退出批量' : '☑️ 批量管理';
+        batchBtn.onclick = appState.batchMode ? exitBatchMode : enterBatchMode;
     }
 
     if (works.length === 0) {
         const emptyTips = {
             mine: '还没有发布作品，快去设计一个吧！',
             drafts: '还没有草稿，编辑中点击"保存草稿"可随时保存',
+            private: '还没有私密作品',
             published: '暂无公开作品',
             favorites: '还没有收藏作品',
             popular: '暂无热门作品',
@@ -1015,20 +1162,27 @@ function renderGallery() {
     grid.innerHTML = works.map(work => {
         const isFav = GameData.favorites.includes(work.id);
         const isDraft = work.status === 'draft';
+        const isPrivate = work.visibility === 'private';
         const thumbDataUrl = work.canvasElements ? getDesignThumbnail(work, 400, 500) : null;
         const bgStyle = thumbDataUrl
             ? `background-image: url(${thumbDataUrl}); background-size: cover; background-position: center top;`
             : `background: ${work.background || GameData.gradients[work.gradientIdx % GameData.gradients.length]};`;
+        const isSelected = appState.selectedWorkIds.includes(work.id);
+        const totalComments = _totalCommentsCount(work);
 
         return `
-            <div class="gallery-item" onclick="openWorkDetail(${work.id})">
+            <div class="gallery-item ${appState.batchMode ? 'batch-mode' : ''} ${isSelected ? 'selected' : ''}" 
+                 onclick="${appState.batchMode ? `toggleWorkSelection(${work.id}, this)` : `openWorkDetail(${work.id})`}">
                 <div class="work-preview" style="${bgStyle}">
                     ${isDraft ? '<div style="position:absolute;top:8px;left:8px;background:rgba(255,152,0,0.9);color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📝 草稿</div>' : ''}
+                    ${isPrivate ? '<div style="position:absolute;top:8px;right:8px;background:rgba(107,114,128,0.9);color:white;padding:2px 8px;border-radius:4px;font-size:12px;">🔒 仅自己可见</div>' : ''}
+                    ${appState.batchMode ? `<input type="checkbox" style="position:absolute;top:8px;left:8px;z-index:10;width:20px;height:20px;" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleWorkSelection(${work.id}, this)">` : ''}
                     <div class="work-overlay">
                         <span class="work-title">${work.title}</span>
                         <div class="work-stats">
                             <span>❤️ ${work.likes}</span>
-                            <span>💬 ${work.comments.length}</span>
+                            <span>⭐ ${work.favoriteCount || 0}</span>
+                            <span>💬 ${totalComments}</span>
                             ${work.score ? `<span>🏆 ${work.score}</span>` : ''}
                         </div>
                     </div>
@@ -1037,6 +1191,8 @@ function renderGallery() {
                     <span class="work-author">${work.author}${work.isMine ? ' (我)' : ''}</span>
                     ${isDraft
                         ? `<button class="btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation(); editDraft(${work.id})">✏️ 继续编辑</button>`
+                        : appState.batchMode
+                        ? ''
                         : `<button class="btn-favorite ${isFav ? 'active' : ''}" 
                                 onclick="event.stopPropagation(); toggleFavoriteWork(${work.id}, this)">
                             ${isFav ? '⭐' : '☆'}
@@ -1054,21 +1210,141 @@ function bindGalleryFilters() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             appState.galleryFilter = btn.dataset.filter;
-            renderGallery();
+            if (appState.batchMode) exitBatchMode();
+            else renderGallery();
         });
     });
 }
 
+function enterBatchMode() {
+    appState.batchMode = true;
+    appState.selectedWorkIds = [];
+    renderGallery();
+}
+
+function exitBatchMode() {
+    appState.batchMode = false;
+    appState.selectedWorkIds = [];
+    renderGallery();
+}
+
+function toggleWorkSelection(workId, el) {
+    const idx = appState.selectedWorkIds.indexOf(workId);
+    if (idx > -1) {
+        appState.selectedWorkIds.splice(idx, 1);
+    } else {
+        appState.selectedWorkIds.push(workId);
+    }
+    renderGallery();
+}
+
+function toggleSelectAllWorks(checkboxEl) {
+    const filter = appState.galleryFilter;
+    let works = [...GameData.galleryWorks];
+    if (filter === 'mine') works = works.filter(w => w.isMine && w.status === 'published');
+    else if (filter === 'drafts') works = works.filter(w => w.isMine && w.status === 'draft');
+    else if (filter === 'private') works = works.filter(w => w.isMine && w.visibility === 'private');
+
+    const workIds = works.map(w => w.id);
+    const allSelected = workIds.every(id => appState.selectedWorkIds.includes(id));
+
+    if (allSelected) {
+        appState.selectedWorkIds = [];
+    } else {
+        appState.selectedWorkIds = [...workIds];
+    }
+    renderGallery();
+}
+
+function batchDeleteWorks() {
+    if (appState.selectedWorkIds.length === 0) {
+        showToast('请先选择要删除的作品', 'error');
+        return;
+    }
+    if (!confirm(`确定要删除选中的 ${appState.selectedWorkIds.length} 个作品吗？此操作不可恢复。`)) return;
+
+    appState.selectedWorkIds.forEach(workId => {
+        const idx = GameData.galleryWorks.findIndex(w => w.id === workId);
+        if (idx > -1) GameData.galleryWorks.splice(idx, 1);
+
+        const mi = GameData.myWorks.indexOf(workId);
+        if (mi > -1) GameData.myWorks.splice(mi, 1);
+
+        const di = GameData.myDrafts.indexOf(workId);
+        if (di > -1) GameData.myDrafts.splice(di, 1);
+
+        const pi = GameData.myPrivate.indexOf(workId);
+        if (pi > -1) GameData.myPrivate.splice(pi, 1);
+
+        const fi = GameData.favorites.indexOf(workId);
+        if (fi > -1) GameData.favorites.splice(fi, 1);
+    });
+
+    GameData.saveWorks();
+    GameData.saveMyWorks();
+    GameData.saveMyDrafts();
+    GameData.saveMyPrivate();
+    GameData.saveFavorites();
+
+    appState.selectedWorkIds = [];
+    appState.batchMode = false;
+    renderGallery();
+    showToast('批量删除成功！', 'success');
+}
+
+async function batchExportWorks() {
+    if (appState.selectedWorkIds.length === 0) {
+        showToast('请先选择要导出的作品', 'error');
+        return;
+    }
+
+    showToast(`正在导出 ${appState.selectedWorkIds.length} 个作品...`, 'success');
+    const W = 800, H = 1120;
+
+    for (let i = 0; i < appState.selectedWorkIds.length; i++) {
+        const workId = appState.selectedWorkIds[i];
+        const work = GameData.galleryWorks.find(w => w.id === workId);
+        if (!work || !work.canvasElements) continue;
+
+        const targetCanvas = document.createElement('canvas');
+        targetCanvas.width = W;
+        targetCanvas.height = H;
+        const ctx = targetCanvas.getContext('2d');
+
+        const bgStyle = work.background || GameData.gradients[work.gradientIdx || 0];
+        await renderDesignToCanvasAsync(ctx, W, H, bgStyle, work.canvasElements, 2);
+
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, W, H);
+
+        const link = document.createElement('a');
+        link.download = `${work.title || 'design'}-${workId}.png`;
+        link.href = targetCanvas.toDataURL('image/png');
+        link.click();
+
+        await new Promise(r => setTimeout(r, 500));
+    }
+
+    showToast('批量导出完成！', 'success');
+}
+
 function toggleFavoriteWork(workId, btnEl) {
     const idx = GameData.favorites.indexOf(workId);
+    const work = GameData.galleryWorks.find(w => w.id === workId);
+    if (!work) return;
+
     if (idx > -1) {
         GameData.favorites.splice(idx, 1);
+        work.favoriteCount = Math.max(0, (work.favoriteCount || 0) - 1);
         showToast('已取消收藏');
     } else {
         GameData.favorites.push(workId);
+        work.favoriteCount = (work.favoriteCount || 0) + 1;
         showToast('已收藏作品', 'success');
     }
     GameData.saveFavorites();
+    GameData.saveWorks();
     renderGallery();
 
     const id = appState.currentViewingWorkId;
@@ -1078,6 +1354,8 @@ function toggleFavoriteWork(workId, btnEl) {
             const isFav = GameData.favorites.includes(id);
             collectBtn.textContent = isFav ? '⭐ 已收藏' : '⭐ 收藏';
         }
+        const favCountEl = document.getElementById('workFavorites');
+        if (favCountEl) favCountEl.textContent = work.favoriteCount || 0;
     }
 }
 
@@ -1092,19 +1370,178 @@ function deleteComment(commentId) {
     if (idx === -1) return;
 
     work.comments.splice(idx, 1);
+    if (work.pinnedCommentId === commentId) work.pinnedCommentId = null;
     GameData.saveWorks();
     renderComments(work.comments);
-    document.getElementById('workCommentsCount').textContent = work.comments.length;
+    document.getElementById('workCommentsCount').textContent = _totalCommentsCount(work);
     renderGallery();
     showToast('评论已删除');
 }
 
+// ============ 功能5：评论功能 ============
+function renderComments(comments) {
+    const container = document.getElementById('commentsSection');
+    const workId = appState.currentViewingWorkId;
+    const work = GameData.galleryWorks.find(w => w.id === workId);
+    const isWorkAuthor = work && work.isMine;
+
+    if (!comments || comments.length === 0) {
+        container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:13px;">
+            还没有评论，快来抢沙发吧~
+        </div>`;
+        return;
+    }
+
+    const pinned = comments.find(c => c.id === work?.pinnedCommentId);
+    const normalComments = comments.filter(c => c.id !== work?.pinnedCommentId);
+    const ordered = pinned ? [pinned, ...normalComments] : normalComments;
+
+    container.innerHTML = ordered.map(c => {
+        const isPinned = c.id === work?.pinnedCommentId;
+        const canPin = isWorkAuthor && (c.isMine || c.author === work?.author);
+        const bgStyle = isPinned ? 'background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;' : '';
+
+        let repliesHtml = '';
+        if (c.replies && c.replies.length) {
+            repliesHtml = `<div style="margin-top:10px;padding-left:12px;border-left:2px solid #e2e8f0;display:flex;flex-direction:column;gap:8px;">
+                ${c.replies.map(r => `
+                    <div id="reply-${r.id}" style="padding:8px;background:#f8fafc;border-radius:6px;font-size:13px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                            <span style="font-weight:600;color:#334155;">${r.author}</span>
+                            <span style="color:#94a3b8;font-size:11px;">${r.createdAt || ''}</span>
+                            ${r.isMine ? `<button class="btn-icon" onclick="deleteReply(${c.id}, ${r.id})" style="margin-left:auto;background:none;border:none;color:#ef4444;cursor:pointer;font-size:11px;" title="删除回复">🗑️</button>` : ''}
+                        </div>
+                        <div style="color:#475569;">${r.content}</div>
+                    </div>
+                `).join('')}
+            </div>`;
+        }
+
+        const replyFormHtml = appState.replyingToCommentId === c.id ? `
+            <div id="replyForm-${c.id}" style="margin-top:10px;display:flex;gap:8px;">
+                <input type="text" id="replyInput-${c.id}" placeholder="写下你的回复..." style="flex:1;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+                <button class="btn-primary" style="padding:8px 16px;font-size:13px;" onclick="submitReply(${c.id})">发送</button>
+                <button class="btn-secondary" style="padding:8px 12px;font-size:13px;" onclick="cancelReply()">取消</button>
+            </div>
+        ` : '';
+
+        return `
+            <div id="comment-${c.id}" class="comment-item" style="${bgStyle}padding:12px;border-radius:8px;margin-bottom:10px;">
+                <div class="comment-avatar" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0;">${c.avatar || c.author.charAt(0).toUpperCase()}</div>
+                <div class="comment-content" style="flex:1;margin-left:10px;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+                        ${isPinned ? '<span style="background:#f59e0b;color:white;padding:1px 6px;border-radius:4px;font-size:11px;">📌 置顶</span>' : ''}
+                        <span class="comment-author" style="font-weight:600;color:#334155;">${c.author}</span>
+                        <span style="color:#94a3b8;font-size:11px;">${c.createdAt || ''}</span>
+                        <div style="margin-left:auto;display:flex;gap:4px;">
+                            <button class="btn-icon" onclick="openReply(${c.id})" style="background:none;border:none;color:#667eea;cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;" title="回复">💬 回复</button>
+                            ${canPin ? `<button class="btn-icon" onclick="pinComment(${c.id})" style="background:none;border:none;color:${isPinned ? '#f59e0b' : '#94a3b8'};cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;" title="置顶">📌</button>` : ''}
+                            ${c.isMine ? `<button class="btn-icon" onclick="deleteComment(${c.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;" title="删除评论">🗑️</button>` : ''}
+                        </div>
+                    </div>
+                    <p style="color:#475569;margin:4px 0 0 0;">${c.content}</p>
+                    ${repliesHtml}
+                    ${replyFormHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openReply(commentId) {
+    appState.replyingToCommentId = commentId;
+    const work = GameData.galleryWorks.find(w => w.id === appState.currentViewingWorkId);
+    if (work) renderComments(work.comments);
+    setTimeout(() => {
+        const input = document.getElementById(`replyInput-${commentId}`);
+        if (input) input.focus();
+    }, 50);
+}
+
+function cancelReply() {
+    appState.replyingToCommentId = null;
+    const work = GameData.galleryWorks.find(w => w.id === appState.currentViewingWorkId);
+    if (work) renderComments(work.comments);
+}
+
+function submitReply(commentId) {
+    const workId = appState.currentViewingWorkId;
+    if (!workId) return;
+    const work = GameData.galleryWorks.find(w => w.id === workId);
+    if (!work) return;
+
+    const input = document.getElementById(`replyInput-${commentId}`);
+    const content = input?.value.trim();
+    if (!content) {
+        showToast('请输入回复内容', 'error');
+        return;
+    }
+
+    const comment = work.comments.find(c => c.id === commentId);
+    if (!comment) return;
+    if (!comment.replies) comment.replies = [];
+
+    comment.replies.push({
+        id: Date.now(),
+        author: '我',
+        avatar: '我',
+        content: content,
+        isMine: true,
+        createdAt: new Date().toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    });
+
+    GameData.saveWorks();
+    appState.replyingToCommentId = null;
+    renderComments(work.comments);
+    document.getElementById('workCommentsCount').textContent = _totalCommentsCount(work);
+    renderGallery();
+    showToast('回复成功！', 'success');
+}
+
+function pinComment(commentId) {
+    const workId = appState.currentViewingWorkId;
+    if (!workId) return;
+    const work = GameData.galleryWorks.find(w => w.id === workId);
+    if (!work || !work.isMine) return;
+
+    work.pinnedCommentId = work.pinnedCommentId === commentId ? null : commentId;
+    GameData.saveWorks();
+    renderComments(work.comments);
+    showToast(work.pinnedCommentId ? '已置顶评论' : '已取消置顶');
+}
+
+function deleteReply(commentId, replyId) {
+    const workId = appState.currentViewingWorkId;
+    if (!workId) return;
+    const work = GameData.galleryWorks.find(w => w.id === workId);
+    if (!work) return;
+
+    const comment = work.comments.find(c => c.id === commentId);
+    if (!comment || !comment.replies) return;
+
+    const idx = comment.replies.findIndex(r => r.id === replyId);
+    if (idx === -1) return;
+    comment.replies.splice(idx, 1);
+
+    GameData.saveWorks();
+    renderComments(work.comments);
+    document.getElementById('workCommentsCount').textContent = _totalCommentsCount(work);
+    renderGallery();
+    showToast('回复已删除');
+}
+
 // ============ 作品详情 ============
-function openWorkDetail(id) {
+async function openWorkDetail(id) {
     const work = GameData.galleryWorks.find(w => w.id === id);
     if (!work) return;
 
+    if (work.visibility === 'private' && !work.isMine) {
+        showToast('该作品为私密作品，仅作者可见', 'error');
+        return;
+    }
+
     appState.currentViewingWorkId = id;
+    appState.replyingToCommentId = null;
     if (work.status === 'published') {
         work.views = (work.views || 0) + 1;
         GameData.saveWorks();
@@ -1120,7 +1557,7 @@ function openWorkDetail(id) {
         detailCanvas.style.width = W + 'px';
         detailCanvas.style.height = H + 'px';
         const ctx = detailCanvas.getContext('2d');
-        renderDesignToCanvas(ctx, W * 2, H * 2, work.background, work.canvasElements, 2);
+        await renderDesignToCanvasAsync(ctx, W * 2, H * 2, work.background, work.canvasElements, 2);
     } else {
         previewEl.style.background = work.background || GameData.gradients[work.gradientIdx % GameData.gradients.length];
         if (detailCanvas) {
@@ -1129,27 +1566,34 @@ function openWorkDetail(id) {
         }
     }
 
+    let visibilityTag = '';
+    if (work.visibility === 'private') visibilityTag = ' 🔒私密';
+    else if (work.visibility === 'draft' || work.status === 'draft') visibilityTag = ' 📝草稿';
+    else visibilityTag = ' 🌍公开';
+
     document.getElementById('workDetailTitle').textContent = work.title;
-    document.getElementById('workDetailAuthor').textContent = 'by ' + work.author + (work.isMine ? ' (我)' : '') + (work.status === 'draft' ? ' · 草稿' : '');
+    document.getElementById('workDetailAuthor').textContent = 'by ' + work.author + (work.isMine ? ' (我)' : '') + visibilityTag;
     document.getElementById('workLikes').textContent = work.likes;
-    document.getElementById('workCommentsCount').textContent = work.comments.length;
+    document.getElementById('workFavorites').textContent = work.favoriteCount || 0;
+    document.getElementById('workCommentsCount').textContent = _totalCommentsCount(work);
     document.getElementById('workViews').textContent = (work.views || 0).toLocaleString();
     document.getElementById('workScore').textContent = work.score || '-';
 
     const isFav = GameData.favorites.includes(id);
     const collectBtn = document.getElementById('workDetailCollectBtn');
     collectBtn.textContent = isFav ? '⭐ 已收藏' : '⭐ 收藏';
-    collectBtn.style.display = work.status === 'draft' ? 'none' : '';
+    const isInteractionDisabled = work.status === 'draft' || (work.visibility === 'private' && !work.isMine);
+    collectBtn.style.display = isInteractionDisabled ? 'none' : '';
 
     const likeBtn = collectBtn.previousElementSibling;
     if (likeBtn && likeBtn.textContent.includes('点赞')) {
-        likeBtn.style.display = work.status === 'draft' ? 'none' : '';
+        likeBtn.style.display = isInteractionDisabled ? 'none' : '';
     }
 
     const commentInput = document.getElementById('commentInput');
     const sendBtn = commentInput?.nextElementSibling;
-    if (commentInput) commentInput.style.display = work.status === 'draft' ? 'none' : '';
-    if (sendBtn) sendBtn.style.display = work.status === 'draft' ? 'none' : '';
+    if (commentInput) commentInput.style.display = isInteractionDisabled ? 'none' : '';
+    if (sendBtn) sendBtn.style.display = isInteractionDisabled ? 'none' : '';
 
     const scoresContainer = document.getElementById('workScoresContainer');
     if (work.scores) {
@@ -1242,42 +1686,28 @@ function likeWork() {
 function collectWork() {
     const id = appState.currentViewingWorkId;
     if (!id) return;
+    const work = GameData.galleryWorks.find(w => w.id === id);
+    if (!work) return;
 
     const idx = GameData.favorites.indexOf(id);
     const collectBtn = document.getElementById('workDetailCollectBtn');
 
     if (idx > -1) {
         GameData.favorites.splice(idx, 1);
+        work.favoriteCount = Math.max(0, (work.favoriteCount || 0) - 1);
         collectBtn.textContent = '⭐ 收藏';
         showToast('已取消收藏');
     } else {
         GameData.favorites.push(id);
+        work.favoriteCount = (work.favoriteCount || 0) + 1;
         collectBtn.textContent = '⭐ 已收藏';
         showToast('已收藏作品', 'success');
     }
     GameData.saveFavorites();
+    GameData.saveWorks();
+    const favCountEl = document.getElementById('workFavorites');
+    if (favCountEl) favCountEl.textContent = work.favoriteCount || 0;
     renderGallery();
-}
-
-// ============ 功能5：评论功能 ============
-function renderComments(comments) {
-    const container = document.getElementById('commentsSection');
-    if (!comments || comments.length === 0) {
-        container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:13px;">
-            还没有评论，快来抢沙发吧~
-        </div>`;
-        return;
-    }
-    container.innerHTML = comments.map(c => `
-        <div class="comment-item">
-            <div class="comment-avatar">${c.avatar || c.author.charAt(0).toUpperCase()}</div>
-            <div class="comment-content" style="flex:1;">
-                <span class="comment-author">${c.author}</span>
-                <p>${c.content}</p>
-            </div>
-            ${c.isMine ? `<button class="btn-icon" onclick="deleteComment(${c.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;" title="删除评论">🗑️</button>` : ''}
-        </div>
-    `).join('');
 }
 
 function submitComment() {
@@ -1300,12 +1730,14 @@ function submitComment() {
         author: '我',
         avatar: '我',
         content: content,
-        isMine: true
+        isMine: true,
+        replies: [],
+        createdAt: new Date().toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     });
 
     GameData.saveWorks();
     renderComments(work.comments);
-    document.getElementById('workCommentsCount').textContent = work.comments.length;
+    document.getElementById('workCommentsCount').textContent = _totalCommentsCount(work);
     input.value = '';
     renderGallery();
     showToast('评论发表成功！', 'success');

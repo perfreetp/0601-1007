@@ -2301,3 +2301,190 @@ body {
         transform: rotate(90deg);
     }
 }
+
+/* ============ 新增：发布范围选择 ============ */
+.publish-option {
+    transition: all 0.2s;
+}
+.publish-option:hover {
+    border-color: var(--primary) !important;
+    background: rgba(102, 126, 234, 0.04);
+}
+.publish-option input:checked ~ div,
+.publish-option:has(input:checked) {
+    border-color: var(--primary) !important;
+    background: rgba(102, 126, 234, 0.08);
+}
+
+/* ============ 新增：批量管理 ============ */
+#batchManageBar {
+    display: none;
+}
+#batchManageBar.active {
+    display: flex !important;
+}
+.batch-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+.gallery-item.batch-mode {
+    position: relative;
+}
+.gallery-item.batch-mode .batch-select-wrap {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 20;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+}
+.gallery-item.batch-mode.selected {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: var(--radius);
+}
+.batch-private-tag {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(100, 116, 139, 0.9);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 10;
+}
+
+/* ============ 新增：评论楼中楼 + 置顶 ============ */
+.comment-item {
+    position: relative;
+}
+.comment-item.pinned {
+    background: linear-gradient(135deg, rgba(254, 225, 64, 0.08), rgba(250, 112, 154, 0.06));
+    border: 1px solid rgba(254, 225, 64, 0.3);
+    border-radius: var(--radius-sm);
+}
+.comment-pin-badge {
+    color: var(--warning);
+    font-size: 11px;
+    margin-left: 6px;
+    background: rgba(254, 225, 64, 0.15);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+.comment-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 4px;
+}
+.comment-action-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.15s;
+}
+.comment-action-btn:hover {
+    background: var(--surface-alt);
+    color: var(--primary);
+}
+.comment-replies {
+    margin-top: 8px;
+    margin-left: 40px;
+    padding-left: 12px;
+    border-left: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.comment-reply-item {
+    padding: 8px 10px;
+    background: var(--surface-alt);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+.comment-reply-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.comment-reply-body {
+    flex: 1;
+    min-width: 0;
+}
+.comment-reply-author {
+    font-weight: 600;
+    font-size: 12px;
+    margin-right: 6px;
+}
+.comment-reply-content {
+    color: var(--text);
+    margin-top: 2px;
+    word-break: break-word;
+}
+.reply-input-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-left: 40px;
+    margin-top: 6px;
+}
+.reply-input-wrap input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.reply-input-wrap input:focus {
+    border-color: var(--primary);
+}
+.reply-input-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* ============ 新增：回复输入框 ============ */
+#replyInputContainer {
+    display: none;
+    flex-direction: column;
+}
+#replyInputContainer.active {
+    display: flex !important;
+}
+#replyInputContainer input {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    outline: none;
+    width: 100%;
+}
+#replyInputContainer input:focus {
+    border-color: var(--primary);
+}
