@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DesignQuest - 创意设计训练营</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部导航栏 -->
+        <header class="top-nav">
+            <div class="logo">
+                <span class="logo-icon">DQ</span>
+                <span class="logo-text">DesignQuest</span>
+            </div>
+            <nav class="main-nav">
+                <button class="nav-btn active" data-page="training" title="训练营">
+                    <span class="nav-icon">🎓</span>
+                    <span class="nav-text">训练营</span>
+                </button>
+                <button class="nav-btn" data-page="levels" title="任务关卡">
+                    <span class="nav-icon">🎯</span>
+                    <span class="nav-text">任务关卡</span>
+                </button>
+                <button class="nav-btn" data-page="assets" title="素材仓库">
+                    <span class="nav-icon">🎨</span>
+                    <span class="nav-text">素材仓库</span>
+                </button>
+                <button class="nav-btn" data-page="gallery" title="作品墙">
+                    <span class="nav-icon">🖼️</span>
+                    <span class="nav-text">作品墙</span>
+                </button>
+                <button class="nav-btn" data-page="battle" title="对战房">
+                    <span class="nav-icon">⚔️</span>
+                    <span class="nav-text">对战房</span>
+                </button>
+                <button class="nav-btn" data-page="review" title="复盘页">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">复盘</span>
+                </button>
+            </nav>
+            <div class="user-info">
+                <div class="user-stats">
+                    <span class="stat-item">⭐ <span id="userExp">0</span></span>
+                    <span class="stat-item">💎 <span id="userCoins">100</span></span>
+                </div>
+                <div class="user-avatar" id="userAvatar">设</div>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 训练营页面 -->
+            <section id="page-training" class="page active">
+                <div class="page-header">
+                    <h1>🎓 设计训练营</h1>
+                    <p class="page-subtitle">掌握设计基础，从这里开始你的创意之旅</p>
+                </div>
+                <div class="training-grid">
+                    <div class="training-course" data-course="layout">
+                        <div class="course-icon">📐</div>
+                        <h3>版式设计基础</h3>
+                        <p>学习对齐、对比、重复、亲密性四大原则</p>
+                        <div class="course-progress">
+                            <div class="progress-bar"><div class="progress-fill" style="width: 60%"></div></div>
+                            <span class="progress-text">3/5 已完成</span>
+                        </div>
+                        <button class="btn-primary" onclick="startCourse('layout')">继续学习</button>
+                    </div>
+                    <div class="training-course" data-course="color">
+                        <div class="course-icon">🌈</div>
+                        <h3>配色理论</h3>
+                        <p>掌握色轮、色彩心理学与配色方案</p>
+                        <div class="course-progress">
+                            <div class="progress-bar"><div class="progress-fill" style="width: 40%"></div></div>
+                            <span class="progress-text">2/5 已完成</span>
+                        </div>
+                        <button class="btn-primary" onclick="startCourse('color')">开始学习</button>
+                    </div>
+                    <div class="training-course" data-course="typography">
+                        <div class="course-icon">🔤</div>
+                        <h3>字体排版</h3>
+                        <p>了解字体分类与排版技巧</p>
+                        <div class="course-progress">
+                            <div class="progress-bar"><div class="progress-fill" style="width: 20%"></div></div>
+                            <span class="progress-text">1/5 已完成</span>
+                        </div>
+                        <button class="btn-primary" onclick="startCourse('typography')">开始学习</button>
+                    </div>
+                    <div class="training-course" data-course="whitespace">
+                        <div class="course-icon">⬜</div>
+                        <h3>留白艺术</h3>
+                        <p>学习呼吸感与视觉节奏</p>
+                        <div class="course-progress">
+                            <div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+                            <span class="progress-text">0/5 已完成</span>
+                        </div>
+                        <button class="btn-primary" onclick="startCourse('whitespace')">开始学习</button>
+                    </div>
+                </div>
+                
+                <div class="daily-tasks">
+                    <h2>📅 每日任务</h2>
+                    <div class="task-list">
+                        <div class="task-item">
+                            <div class="task-check" onclick="toggleTask(this)">
+                                <span class="task-icon">✓</span>
+                            </div>
+                            <div class="task-content">
+                                <h4>完成1个版式关卡</h4>
+                                <p>+50 经验值</p>
+                            </div>
+                            <span class="task-status completed">已完成</span>
+                        </div>
+                        <div class="task-item">
+                            <div class="task-check" onclick="toggleTask(this)">
+                                <span class="task-icon"></span>
+                            </div>
+                            <div class="task-content">
+                                <h4>尝试3种配色方案</h4>
+                                <p>+30 经验值</p>
+                            </div>
+                            <span class="task-status">进行中</span>
+                        </div>
+                        <div class="task-item">
+                            <div class="task-check" onclick="toggleTask(this)">
+                                <span class="task-icon"></span>
+                            </div>
+                            <div class="task-content">
+                                <h4>收藏1个优秀作品</h4>
+                                <p>+20 经验值</p>
+                            </div>
+                            <span class="task-status">未开始</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 任务关卡页面 -->
+            <section id="page-levels" class="page">
+                <div class="page-header">
+                    <h1>🎯 任务关卡</h1>
+                    <p class="page-subtitle">选择主题，挑战你的设计技能</p>
+                </div>
+                
+                <div class="level-theme-selector">
+                    <h3>选择海报主题</h3>
+                    <div class="theme-grid">
+                        <div class="theme-card selected" data-theme="music">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #667eea, #764ba2);">🎵</div>
+                            <h4>音乐节</h4>
+                            <p>活力·动感</p>
+                        </div>
+                        <div class="theme-card" data-theme="food">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #f093fb, #f5576c);">🍔</div>
+                            <h4>美食节</h4>
+                            <p>热情·诱人</p>
+                        </div>
+                        <div class="theme-card" data-theme="tech">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">💻</div>
+                            <h4>科技展</h4>
+                            <p>未来·理性</p>
+                        </div>
+                        <div class="theme-card" data-theme="nature">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">🌿</div>
+                            <h4>环保公益</h4>
+                            <p>自然·清新</p>
+                        </div>
+                        <div class="theme-card" data-theme="art">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #fa709a, #fee140);">🎨</div>
+                            <h4>艺术展览</h4>
+                            <p>创意·多元</p>
+                        </div>
+                        <div class="theme-card" data-theme="sports">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #30cfd0, #330867);">⚽</div>
+                            <h4>运动会</h4>
+                            <p>运动·激情</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="level-difficulty">
+                    <h3>选择难度</h3>
+                    <div class="difficulty-buttons">
+                        <button class="diff-btn active" data-diff="easy">
+                            <span class="diff-icon">⭐</span>
+                            <span class="diff-name">入门</span>
+                            <span class="diff-time">10分钟</span>
+                        </button>
+                        <button class="diff-btn" data-diff="normal">
+                            <span class="diff-icon">⭐⭐</span>
+                            <span class="diff-name">进阶</span>
+                            <span class="diff-time">15分钟</span>
+                        </button>
+                        <button class="diff-btn" data-diff="hard">
+                            <span class="diff-icon">⭐⭐⭐</span>
+                            <span class="diff-name">大师</span>
+                            <span class="diff-time">20分钟</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="level-list">
+                    <h3>关卡列表</h3>
+                    <div class="level-cards">
+                        <div class="level-card unlocked">
+                            <div class="level-num">1</div>
+                            <div class="level-info">
+                                <h4>基础排版</h4>
+                                <p>将标题、图片和文字合理布局</p>
+                                <div class="level-tags">
+                                    <span class="tag">版式</span>
+                                    <span class="tag">基础</span>
+                                </div>
+                            </div>
+                            <button class="btn-primary" onclick="startLevel(1)">开始挑战</button>
+                        </div>
+                        <div class="level-card unlocked">
+                            <div class="level-num">2</div>
+                            <div class="level-info">
+                                <h4>色彩搭配</h4>
+                                <p>为海报选择合适的配色方案</p>
+                                <div class="level-tags">
+                                    <span class="tag">配色</span>
+                                    <span class="tag">基础</span>
+                                </div>
+                            </div>
+                            <button class="btn-primary" onclick="startLevel(2)">开始挑战</button>
+                        </div>
+                        <div class="level-card unlocked">
+                            <div class="level-num">3</div>
+                            <div class="level-info">
+                                <h4>留白挑战</h4>
+                                <p>在限定元素，营造呼吸感</p>
+                                <div class="level-tags">
+                                    <span class="tag">留白</span>
+                                    <span class="tag">进阶</span>
+                                </div>
+                            </div>
+                            <button class="btn-primary" onclick="startLevel(3)">开始挑战</button>
+                        </div>
+                        <div class="level-card locked">
+                            <div class="level-num">🔒</div>
+                            <div class="level-info">
+                                <h4>字体组合</h4>
+                                <p>选择合适的字体搭配</p>
+                                <div class="level-tags">
+                                    <span class="tag">字体</span>
+                                    <span class="tag">进阶</span>
+                                </div>
+                            </div>
+                            <button class="btn-disabled">未解锁</button>
+                        </div>
+                        <div class="level-card locked">
+                            <div class="level-num">🔒</div>
+                            <div class="level-info">
+                                <h4>综合挑战</h4>
+                                <p>综合运用所有技能</p>
+                                <div class="level-tags">
+                                    <span class="tag">综合</span>
+                                    <span class="tag">大师</span>
+                                </div>
+                            </div>
+                            <button class="btn-disabled">未解锁</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 编辑器页面（关卡编辑器） -->
+            <section id="page-editor" class="page">
+                <div class="editor-header">
+                    <button class="btn-back" onclick="goBack()">← 返回关卡</button>
+                    <div class="editor-title">
+                        <h2 id="editorLevelTitle">关卡 1: 基础排版</h2>
+                        <div class="timer">
+                            <span class="timer-icon">⏱️</span>
+                            <span id="timerDisplay">10:00</span>
+                        </div>
+                    </div>
+                    <div class="editor-actions">
+                        <button class="btn-secondary" onclick="resetCanvas()">重置</button>
+                        <button class="btn-primary" onclick="submitDesign()">提交评分</button>
+                    </div>
+                </div>
+
+                <div class="editor-container">
+                    <!-- 左侧工具栏 -->
+                    <div class="editor-sidebar left">
+                        <div class="sidebar-section">
+                            <h4>📝 文字元素</h4>
+                            <div class="element-list" id="textElements">
+                                <div class="element-item" draggable="true" data-type="text" data-content="主标题">
+                            <span class="el-icon">T</span>
+                            <span class="el-name">主标题</span>
+                        </div>
+                        <div class="element-item" draggable="true" data-type="text" data-content="副标题">
+                            <span class="el-icon">T</span>
+                            <span class="el-name">副标题</span>
+                        </div>
+                        <div class="element-item" draggable="true" data-type="text" data-content="正文内容">
+                            <span class="el-icon">¶</span>
+                            <span class="el-name">正文</span>
+                        </div>
+                        <div class="element-item" draggable="true" data-type="text" data-content="日期时间">
+                            <span class="el-icon">📅</span>
+                            <span class="el-name">日期</span>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h4>🖼️ 图片元素</h4>
+                        <div class="element-list" id="imageElements">
+                            <div class="element-item" draggable="true" data-type="image" data-content="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=abstract%20geometric%20music%20poster%20background&image_size=square">
+                                <span class="el-icon">🖼️</span>
+                                <span class="el-name">主图</span>
+                            </div>
+                            <div class="element-item" draggable="true" data-type="shape" data-content="rect">
+                                <span class="el-icon">⬛</span>
+                                <span class="el-name">矩形</span>
+                            </div>
+                            <div class="element-item" draggable="true" data-type="shape" data-content="circle">
+                                <span class="el-icon">⚫</span>
+                                <span class="el-name">圆形</span>
+                            </div>
+                            <div class="element-item" draggable="true" data-type="shape" data-content="line">
+                                <span class="el-icon">➖</span>
+                                <span class="el-name">线条</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <h4>🎨 配色方案</h4>
+                        <div class="color-palettes" id="colorPalettes">
+                            <div class="palette-item" onclick="applyPalette('vibrant')">
+                                <div class="palette-colors">
+                                    <span style="background:#FF6B6B"></span>
+                                    <span style="background:#4ECDC4"></span>
+                                    <span style="background:#FFE66D"></span>
+                                    <span style="background:#1A535C"></span>
+                                </div>
+                                <span>活力</span>
+                            </div>
+                            <div class="palette-item" onclick="applyPalette('elegant')">
+                                <div class="palette-colors">
+                                    <span style="background:#2C3E50"></span>
+                                    <span style="background:#34495E"></span>
+                                    <span style="background:#7F8C8D"></span>
+                                    <span style="background:#ECF0F1"></span>
+                                </div>
+                                <span>优雅</span>
+                            </div>
+                            <div class="palette-item" onclick="applyPalette('nature')">
+                                <div class="palette-colors">
+                                    <span style="background:#2D5016"></span>
+                                    <span style="background:#6B8E23"></span>
+                                    <span style="background:#9ACD32"></span>
+                                    <span style="background:#F0E68C"></span>
+                                </div>
+                                <span>自然</span>
+                            </div>
+                            <div class="palette-item" onclick="applyPalette('warm')">
+                                <div class="palette-colors">
+                                    <span style="background:#FF4500"></span>
+                                    <span style="background:#FF8C00"></span>
+                                    <span style="background:#FFD700"></span>
+                                    <span style="background:#FFFFE0"></span>
+                                </div>
+                                <span>温暖</span>
+                            </div>
+                        </div>
+                        <div class="custom-color">
+                            <label>自定义颜色:</label>
+                            <input type="color" id="customColorPicker" value="#667eea" onchange="applyCustomColor(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 中间画布区域 -->
+                <div class="canvas-wrapper">
+                    <div class="canvas-container" id="canvasContainer">
+                        <div class="design-canvas" id="designCanvas">
+                            <div class="canvas-bg" id="canvasBg"></div>
+                            <div id="canvasElements"></div>
+                        </div>
+                    </div>
+                    <div class="canvas-hint" id="canvasHint">
+                        💡 拖拽左侧元素到画布开始设计
+                    </div>
+                </div>
+
+                <!-- 右侧属性面板 -->
+                <div class="editor-sidebar right">
+                    <div class="sidebar-section">
+                        <h4>⚙️ 属性设置</h4>
+                        <div id="propertyPanel" class="property-panel">
+                            <p class="empty-hint">选择元素查看属性</p>
+                        </div>
+                    </div>
+                    <div class="sidebar-section">
+                        <h4>🔤 字体选择</h4>
+                        <div class="font-list">
+                            <div class="font-item" style="font-family: 'Noto Sans SC', sans-serif;" onclick="selectFont('Noto Sans SC')">思源黑体</div>
+                            <div class="font-item locked" onclick="selectFont('serif')">宋体 <span class="lock-icon">🔒</span></div>
+                            <div class="font-item locked">楷体 <span class="lock-icon">🔒</span></div>
+                            <div class="font-item locked">艺术字体 <span class="lock-icon">🔒</span></div>
+                        </div>
+                    </div>
+                    <div class="sidebar-section">
+                        <h4>📋 任务要求</h4>
+                        <div class="task-requirements">
+                            <div class="req-item">
+                                <span class="req-check">✓</span>
+                                <span>包含主标题</span>
+                            </div>
+                            <div class="req-item">
+                                <span class="req-check"></span>
+                                <span>包含至少1张图片</span>
+                            </div>
+                            <div class="req-item">
+                                <span class="req-check"></span>
+                                <span>使用合理配色</span>
+                            </div>
+                            <div class="req-item">
+                                <span class="req-check"></span>
+                                <span>留白比例 > 30%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 评分面板页面 -->
+        <section id="page-scoring" class="page">
+            <div class="scoring-container">
+                <div class="score-overview">
+                    <div class="score-circle">
+                        <svg class="score-ring" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="#eee" stroke-width="8"/>
+                            <circle id="scoreProgress" cx="50" cy="50" r="45" fill="none" stroke="#667eea" stroke-width="8" stroke-dasharray="283" stroke-dashoffset="100" stroke-linecap="round"/>
+                        </svg>
+                        <div class="score-value">
+                            <span id="finalScore">85</span>
+                            <span class="score-label">分</span>
+                        </div>
+                    </div>
+                    <div class="score-title">
+                        <h2>设计评分</h2>
+                        <p class="score-level">优秀设计师！继续加油~</p>
+                        <div class="score-rewards">
+                            <span class="reward-item">+85 经验值</span>
+                            <span class="reward-item">+50 金币</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="score-breakdown">
+                    <h3>评分详情</h3>
+                    <div class="score-item">
+                        <div class="score-item-header">
+                            <span class="score-item-name">版式布局</span>
+                            <span class="score-item-value">90/100</span>
+                        </div>
+                        <div class="score-bar">
+                            <div class="score-bar-fill" style="width: 90%; background: linear-gradient(90deg, #667eea, #764ba2);"></div>
+                        </div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-item-header">
+                            <span class="score-item-name">色彩搭配</span>
+                            <span class="score-item-value">82/100</span>
+                        </div>
+                        <div class="score-bar">
+                            <div class="score-bar-fill" style="width: 82%; background: linear-gradient(90deg, #f093fb, #f5576c);"></div>
+                        </div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-item-header">
+                            <span class="score-item-name">可读性</span>
+                            <span class="score-item-value">88/100</span>
+                        </div>
+                        <div class="score-bar">
+                            <div class="score-bar-fill" style="width: 88%; background: linear-gradient(90deg, #4facfe, #00f2fe);"></div>
+                        </div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-item-header">
+                            <span class="score-item-name">留白比例</span>
+                            <span class="score-item-value">75/100</span>
+                        </div>
+                        <div class="score-bar">
+                            <div class="score-bar-fill" style="width: 75%; background: linear-gradient(90deg, #43e97b, #38f9d7);"></div>
+                        </div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-item-header">
+                            <span class="score-item-name">创意性</span>
+                            <span class="score-item-value">92/100</span>
+                        </div>
+                        <div class="score-bar">
+                            <div class="score-bar-fill" style="width: 92%; background: linear-gradient(90deg, #fa709a, #fee140);"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="score-suggestions">
+                    <h3>💡 审美建议</h3>
+                    <div class="suggestion-list">
+                        <div class="suggestion-item good">
+                        <span class="sug-icon">✅</span>
+                        <div class="sug-content">
+                            <h4>做得好！</h4>
+                            <p>标题与正文的层级关系清晰，视觉引导自然</p>
+                        </div>
+                    </div>
+                    <div class="suggestion-item improve">
+                        <span class="sug-icon">💡</span>
+                        <div class="sug-content">
+                            <h4>可以改进</h4>
+                            <p>留白可以增加20%留白空间，让画面更有呼吸感</p>
+                        </div>
+                    </div>
+                    <div class="suggestion-item warning">
+                        <span class="sug-icon">⚠️</span>
+                        <div class="sug-content">
+                            <h4>需要修正</h4>
+                            <p>右下角文字颜色对比度稍低，建议提高文字与背景的对比度</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="common-mistakes">
+                    <h3>🔧 常见错误修正</h3>
+                    <div class="mistake-list">
+                        <div class="mistake-item fixed">
+                            <span class="mistake-check">✓</span>
+                            <span>文字对齐不一致 - 已修正</span>
+                        </div>
+                        <div class="mistake-item">
+                            <span class="mistake-check"></span>
+                            <span>色彩对比度不足</span>
+                            <button class="btn-fix" onclick="fixMistake('contrast')">一键修正</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="scoring-actions">
+                <button class="btn-secondary" onclick="goToPage('levels')">返回关卡</button>
+                <button class="btn-secondary" onclick="exportDesign()">导出练习图</button>
+                <button class="btn-secondary" onclick="saveToGallery()">保存到作品墙</button>
+                <button class="btn-secondary" onclick="shareScore()">分享成绩卡</button>
+                <button class="btn-primary" onclick="nextLevel()">下一关</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 素材仓库页面 -->
+    <section id="page-assets" class="page">
+        <div class="page-header">
+            <h1>🎨 素材仓库</h1>
+            <p class="page-subtitle">收集和管理你的设计素材</p>
+        </div>
+
+        <div class="assets-tabs">
+            <button class="asset-tab active" data-tab="fonts">🔤 字体库</button>
+            <button class="asset-tab" data-tab="colors">🌈 配色方案</button>
+            <button class="asset-tab" data-tab="images">🖼️ 图片素材</button>
+            <button class="asset-tab" data-tab="templates">📄 模板</button>
+        </div>
+
+        <div class="assets-content">
+            <div id="fonts-tab" class="tab-content active">
+                <div class="font-grid">
+                    <div class="font-card unlocked">
+                        <div class="font-preview" style="font-family: 'Noto Sans SC';">思源黑体</div>
+                        <div class="font-info">
+                            <h4>思源黑体</h4>
+                            <p>现代 · 无衬线</p>
+                            <span class="font-status unlocked-icon">✓ 已解锁</span>
+                        </div>
+                    </div>
+                    <div class="font-card locked">
+                        <div class="font-preview" style="font-family: serif;">宋体</div>
+                        <div class="font-info">
+                            <h4>宋体</h4>
+                            <p>经典 · 衬线体</p>
+                            <span class="font-status locked-icon">🔒 500金币</span>
+                            <button class="btn-unlock" onclick="unlockAsset('font', 'songti', 500)">解锁</button>
+                        </div>
+                    </div>
+                    <div class="font-card locked">
+                        <div class="font-preview" style="font-family: cursive;">手写体</div>
+                        <div class="font-info">
+                            <h4>手写体</h4>
+                            <p>创意 · 手写</p>
+                            <span class="font-status locked-icon">🔒 800金币</span>
+                            <button class="btn-unlock" onclick="unlockAsset('font', 'handwrite', 800)">解锁</button>
+                        </div>
+                    </div>
+                    <div class="font-card locked">
+                        <div class="font-preview" style="font-weight: bold; font-family: 'Noto Sans SC';">粗体黑</div>
+                        <div class="font-info">
+                            <h4>粗体黑</h4>
+                            <p>醒目 · 标题专用</p>
+                            <span class="font-status locked-icon">🔒 300金币</span>
+                            <button class="btn-unlock" onclick="unlockAsset('font', 'bold', 300)">解锁</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="colors-tab" class="tab-content">
+                <div class="color-scheme-grid">
+                    <div class="color-scheme-card">
+                        <div class="scheme-preview">
+                            <div class="scheme-colors">
+                                <span style="background:#FF6B6B"></span>
+                                <span style="background:#4ECDC4"></span>
+                                <span style="background:#FFE66D"></span>
+                                <span style="background:#1A535C"></span>
+                            </div>
+                        </div>
+                        <h4>活力四射</h4>
+                        <p>适合年轻、动感主题</p>
+                        <div class="scheme-actions">
+                            <button class="btn-secondary" onclick="useScheme()">使用</button>
+                            <button class="btn-icon" onclick="favoriteScheme()">⭐</button>
+                        </div>
+                    </div>
+                    <div class="color-scheme-card">
+                        <div class="scheme-preview">
+                            <div class="scheme-colors">
+                                <span style="background:#2C3E50"></span>
+                                <span style="background:#34495E"></span>
+                                <span style="background:#BDC3C7"></span>
+                                <span style="background:#ECF0F1"></span>
+                            </div>
+                        </div>
+                        <h4>商务优雅</h4>
+                        <p>适合商务、科技主题</p>
+                        <div class="scheme-actions">
+                            <button class="btn-secondary" onclick="useScheme()">使用</button>
+                            <button class="btn-icon" onclick="favoriteScheme()">⭐</button>
+                        </div>
+                    </div>
+                    <div class="color-scheme-card">
+                        <div class="scheme-preview">
+                            <div class="scheme-colors">
+                                <span style="background:#D4A574"></span>
+                                <span style="background:#E8C39E"></span>
+                                <span style="background:#FAEBD7"></span>
+                                <span style="background:#FFF8DC"></span>
+                            </div>
+                        </div>
+                        <h4>复古怀旧</h4>
+                        <p>适合文艺、复古主题</p>
+                        <div class="scheme-actions">
+                            <button class="btn-secondary" onclick="useScheme()">使用</button>
+                            <button class="btn-icon" onclick="favoriteScheme()">⭐</button>
+                        </div>
+                    </div>
+                    <div class="color-scheme-card">
+                        <div class="scheme-preview">
+                            <div class="scheme-colors">
+                                <span style="background:#667eea"></span>
+                                <span style="background:#764ba2"></span>
+                                <span style="background:#f093fb"></span>
+                                <span style="background:#FFECD2"></span>
+                            </div>
+                        </div>
+                        <h4>梦幻渐变</h4>
+                        <p>适合创意、艺术主题</p>
+                        <div class="scheme-actions">
+                            <button class="btn-secondary" onclick="useScheme()">使用</button>
+                            <button class="btn-icon" onclick="favoriteScheme()">⭐</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="images-tab" class="tab-content">
+                <div class="image-asset-grid">
+                    <div class="image-asset-card">
+                        <div class="image-asset-preview" style="background: linear-gradient(135deg, #667eea, #764ba2);">🎵</div>
+                        <h4>抽象几何</h4>
+                        <span class="tag">背景</span>
+                    </div>
+                    <div class="image-asset-card">
+                        <div class="image-asset-preview" style="background: linear-gradient(135deg, #f093fb, #f5576c);">🍕</div>
+                        <h4>美食插画</h4>
+                        <span class="tag">插画</span>
+                    </div>
+                    <div class="image-asset-card">
+                        <div class="image-asset-preview" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">🌊</div>
+                        <h4>科技感</h4>
+                        <span class="tag">背景</span>
+                    </div>
+                    <div class="image-asset-card">
+                        <div class="image-asset-preview" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">🌿</div>
+                        <h4>自然风景</h4>
+                        <span class="tag">背景</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="templates-tab" class="tab-content">
+                <div class="template-grid">
+                    <div class="template-card">
+                        <div class="template-preview">
+                            <div class="template-thumb" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+                        </div>
+                        <h4>音乐节海报</h4>
+                        <p>现代 · 简约风格</p>
+                        <button class="btn-secondary" onclick="useTemplate()">使用模板</button>
+                    </div>
+                    <div class="template-card">
+                        <div class="template-preview">
+                            <div class="template-thumb" style="background: linear-gradient(135deg, #f093fb, #f5576c);"></div>
+                        </div>
+                        <h4>美食推广海报</h4>
+                        <p>热情 · 诱人风格</p>
+                        <button class="btn-secondary" onclick="useTemplate()">使用模板</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 作品墙页面 -->
+    <section id="page-gallery" class="page">
+        <div class="page-header">
+            <h1>🖼️ 作品墙</h1>
+            <p class="page-subtitle">展示你的创意，欣赏他人作品</p>
+            <div class="gallery-filters">
+                <button class="filter-btn active" data-filter="all">全部</button>
+                <button class="filter-btn" data-filter="mine">我的作品</button>
+                <button class="filter-btn" data-filter="favorites">我的收藏</button>
+                <button class="filter-btn" data-filter="popular">热门</button>
+            </div>
+        </div>
+
+        <div class="gallery-grid" id="galleryGrid">
+            <div class="gallery-item" onclick="openWorkDetail(1)">
+                <div class="work-preview" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <div class="work-overlay">
+                        <span class="work-title">夏日音乐节</span>
+                        <div class="work-stats">
+                            <span>❤️ 128</span>
+                            <span>💬 24</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="work-info">
+                    <span class="work-author">设计师小明</span>
+                    <button class="btn-favorite" onclick="event.stopPropagation(); toggleFavorite(this)">⭐</button>
+                </div>
+            </div>
+            <div class="gallery-item" onclick="openWorkDetail(2)">
+                <div class="work-preview" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                    <div class="work-overlay">
+                        <span class="work-title">美食嘉年华</span>
+                        <div class="work-stats">
+                            <span>❤️ 96</span>
+                            <span>💬 18</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="work-info">
+                    <span class="work-author">创意达人</span>
+                    <button class="btn-favorite" onclick="event.stopPropagation(); toggleFavorite(this)">☆</button>
+                </div>
+            </div>
+            <div class="gallery-item" onclick="openWorkDetail(3)">
+                <div class="work-preview" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                    <div class="work-overlay">
+                        <span class="work-title">科技峰会</span>
+                        <div class="work-stats">
+                            <span>❤️ 156</span>
+                            <span>💬 32</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="work-info">
+                    <span class="work-author">TechDesigner</span>
+                    <button class="btn-favorite active" onclick="event.stopPropagation(); toggleFavorite(this)">⭐</button>
+                </div>
+            </div>
+            <div class="gallery-item" onclick="openWorkDetail(4)">
+                <div class="work-preview" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+                    <div class="work-overlay">
+                        <span class="work-title">环保公益海报</span>
+                        <div class="work-stats">
+                            <span>❤️ 88</span>
+                            <span>💬 12</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="work-info">
+                    <span class="work-author">GreenArtist</span>
+                    <button class="btn-favorite" onclick="event.stopPropagation(); toggleFavorite(this)">☆</button>
+                </div>
+            </div>
+            <div class="gallery-item" onclick="openWorkDetail(5)">
+                <div class="work-preview" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                    <div class="work-overlay">
+                        <span class="work-title">艺术展览</span>
+                        <div class="work-stats">
+                            <span>❤️ 203</span>
+                            <span>💬 45</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="work-info">
+                    <span class="work-author">ArtLover</span>
+                    <button class="btn-favorite" onclick="event.stopPropagation(); toggleFavorite(this)">☆</button>
+                </div>
+            </div>
+            <div class="gallery-item" onclick="openWorkDetail(6)">
+                <div class="work-preview" style="background: linear-gradient(135deg, #30cfd0, #330867);">
+                    <div class="work-overlay">
+                        <span class="work-title">运动会海报</span>
+                        <div class="work-stats">
+                            <span>❤️ 167</span>
+                            <span>💬 28</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="work-info">
+                    <span class="work-author">SportDesign</span>
+                    <button class="btn-favorite active" onclick="event.stopPropagation(); toggleFavorite(this)">⭐</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 作品详情弹窗 -->
+        <div id="workDetailModal" class="modal">
+            <div class="modal-content work-detail">
+                <button class="modal-close" onclick="closeWorkDetail()">×</button>
+                <div class="work-detail-content">
+                    <div class="work-large-preview" id="workLargePreview" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+                    <div class="work-detail-info">
+                        <h2 id="workDetailTitle">夏日音乐节</h2>
+                        <p class="work-detail-author">by 设计师小明</p>
+                        <div class="work-detail-stats">
+                            <span>❤️ <span id="workLikes">128</span></span>
+                            <span>💬 <span id="workComments">24</span></span>
+                            <span>👁️ <span id="workViews">1,024</span></span>
+                        </div>
+                        <div class="work-detail-actions">
+                            <button class="btn-primary" onclick="likeWork()">👍 点赞</button>
+                            <button class="btn-secondary" onclick="collectWork()">⭐ 收藏</button>
+                        </div>
+                        <h3>评分</h3>
+                        <div class="work-scores">
+                            <div class="work-score-item">
+                                <span>版式</span>
+                                <div class="work-score-bar"><div class="work-score-fill" style="width: 90%"></div></div>
+                                <span>90</span>
+                            </div>
+                            <div class="work-score-item">
+                                <span>配色</span>
+                                <div class="work-score-bar"><div class="work-score-fill" style="width: 85%"></div></div>
+                                <span>85</span>
+                            </div>
+                            <div class="work-score-item">
+                                <span>创意</span>
+                                <div class="work-score-bar"><div class="work-score-fill" style="width: 92%"></div></div>
+                                <span>92</span>
+                            </div>
+                        </div>
+                        <h3>评论区</h3>
+                        <div class="comments-section">
+                            <div class="comment-item">
+                                <div class="comment-avatar">A</div>
+                                <div class="comment-content">
+                                    <span class="comment-author">UserA</span>
+                                    <p>配色很棒！学习了~</p>
+                                </div>
+                            </div>
+                            <div class="comment-item">
+                                <div class="comment-avatar">B</div>
+                                <div class="comment-content">
+                                    <span class="comment-author">UserB</span>
+                                    <p>排版很有创意！</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="comment-input">
+                            <input type="text" placeholder="发表你的评论...">
+                            <button class="btn-primary">发送</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 对战房页面 -->
+    <section id="page-battle" class="page">
+        <div class="page-header">
+            <h1>⚔️ 对战房</h1>
+            <p class="page-subtitle">与好友同题竞技，看看谁的设计更出彩</p>
+        </div>
+
+        <div class="battle-rooms">
+            <div class="battle-room-card">
+                <div class="room-status waiting">
+                    <span class="room-status-text">等待中</span>
+                </div>
+                <h3>快速对战</h3>
+                <p>随机匹配对手</p>
+                <div class="room-info">
+                    <span>👥 12/128 在线</span>
+                </div>
+                <button class="btn-primary" onclick="joinQuickBattle()">快速加入</button>
+            </div>
+            <div class="battle-room-card">
+                <div class="room-status active">
+                    <span class="room-status-text">进行中</span>
+                </div>
+                <h3>好友对战</h3>
+                <p>创建房间邀请好友</p>
+                <div class="room-info">
+                    <span>🔗 房间号: #8823</span>
+                </div>
+                <button class="btn-secondary" onclick="createRoom()">创建房间</button>
+                <button class="btn-primary" onclick="joinRoom()">加入房间</button>
+            </div>
+            <div class="battle-room-card">
+                <div class="room-status waiting">
+                    <span class="room-status-text">投票中</span>
+                </div>
+                <h3>作品投票</h3>
+                <p>为对战作品投票</p>
+                <div class="room-info">
+                    <span>📊 3 场对战可投票</span>
+                </div>
+                <button class="btn-primary" onclick="goToVoting()">去投票</button>
+            </div>
+        </div>
+
+        <!-- 投票区域 -->
+        <div class="voting-section" id="votingSection" style="display:none;">
+            <h2>🗳️ 作品投票</h2>
+            <div class="voting-battle">
+                <div class="voting-card" onclick="voteFor(1)">
+                    <div class="voting-preview" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                        <div class="voting-overlay">
+                            <h4>选手A</h4>
+                        </div>
+                    </div>
+                    <div class="voting-info">
+                        <h4>设计师A</h4>
+                        <button class="btn-vote">投TA一票</button>
+                    </div>
+                </div>
+                <div class="vs-badge">VS</div>
+                <div class="voting-card" onclick="voteFor(2)">
+                    <div class="voting-preview" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                        <div class="voting-overlay">
+                            <h4>选手B</h4>
+                        </div>
+                    </div>
+                    <div class="voting-info">
+                        <h4>设计师B</h4>
+                        <button class="btn-vote">投TA一票</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对战结果 -->
+        <div class="battle-result" id="battleResult" style="display:none;">
+            <div class="result-header">
+                <h2>🏆 对战结果</h2>
+                <div class="result-players">
+                    <div class="result-player winner">
+                        <div class="player-avatar">A</div>
+                        <h4>设计师A</h4>
+                        <div class="player-score">92分</div>
+                        <div class="player-votes">❤️ 156票</div>
+                    </div>
+                    <div class="vs-text">WIN</div>
+                    <div class="result-player">
+                        <div class="player-avatar">B</div>
+                        <h4>设计师B</h4>
+                        <div class="player-score">78分</div>
+                        <div class="player-votes">❤️ 89票</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 复盘页面 -->
+    <section id="page-review" class="page">
+        <div class="page-header">
+            <h1>📊 复盘中心</h1>
+            <p class="page-subtitle">回顾成长轨迹，持续进步</p>
+        </div>
+
+        <div class="review-overview">
+            <div class="stat-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-value">156</div>
+                <div class="stat-label">总完成关卡</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-value">87.5</div>
+                <div class="stat-label">平均得分</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏆</div>
+                <div class="stat-value">23</div>
+                <div class="stat-label">对战胜利</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🎨</div>
+                <div class="stat-value">45</div>
+                <div class="stat-label">作品数量</div>
+            </div>
+        </div>
+
+        <div class="review-charts">
+            <div class="chart-card">
+                <h3>📈 成长曲线</h3>
+                <div class="chart-container">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>🎯 能力雷达图</h3>
+                <div class="radar-container">
+                    <canvas id="radarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="review-history">
+            <h3>📝 历史记录</h3>
+            <div class="history-list">
+                <div class="history-item" onclick="openReplay(1)">
+                    <div class="history-preview" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+                    <div class="history-info">
+                        <h4>关卡3: 留白挑战</h4>
+                        <p>2024-01-15 14:30</p>
+                        <span class="history-score">85分</span>
+                    </div>
+                    <button class="btn-secondary" onclick="event.stopPropagation(); openReplay(1)">▶️ 回放</button>
+                </div>
+                <div class="history-item" onclick="openReplay(2)">
+                    <div class="history-preview" style="background: linear-gradient(135deg, #f093fb, #f5576c);"></div>
+                    <div class="history-info">
+                        <h4>关卡2: 色彩搭配</h4>
+                        <p>2024-01-14 10:15</p>
+                        <span class="history-score">92分</span>
+                    </div>
+                    <button class="btn-secondary" onclick="event.stopPropagation(); openReplay(2)">▶️ 回放</button>
+                </div>
+                <div class="history-item" onclick="openReplay(3)">
+                    <div class="history-preview" style="background: linear-gradient(135deg, #4facfe, #00f2fe);"></div>
+                    <div class="history-info">
+                        <h4>关卡1: 基础排版</h4>
+                        <p>2024-01-13 16:45</p>
+                        <span class="history-score">78分</span>
+                    </div>
+                    <button class="btn-secondary" onclick="event.stopPropagation(); openReplay(3)">▶️ 回放</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 作品集封面生成 -->
+        <div class="portfolio-section">
+            <h3>📚 我的作品集</h3>
+            <div class="portfolio-generator">
+                <div class="portfolio-preview" id="portfolioPreview">
+                    <div class="portfolio-cover">
+                        <div class="portfolio-title">我的设计作品集</div>
+                        <div class="portfolio-subtitle">2024年度精选</div>
+                    </div>
+                </div>
+                <div class="portfolio-options">
+                    <h4>封面设置</h4>
+                    <div class="option-item">
+                        <label>标题:</label>
+                        <input type="text" id="portfolioTitleInput" placeholder="输入标题" value="我的设计作品集">
+                    </div>
+                    <div class="option-item">
+                        <label>风格:</label>
+                        <select id="portfolioStyle">
+                            <option value="modern">现代简约</option>
+                            <option value="creative">创意艺术</option>
+                            <option value="elegant">优雅商务</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="generatePortfolio()">生成作品集封面</button>
+                    <button class="btn-secondary" onclick="exportPortfolio()">导出作品集</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- 操作回放弹窗 -->
+<div id="replayModal" class="modal">
+    <div class="modal-content replay-content">
+        <button class="modal-close" onclick="closeReplay()">×</button>
+        <h2>🎬 操作回放</h2>
+        <div class="replay-container">
+            <div class="replay-canvas" id="replayCanvas">
+                <div class="replay-preview" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+            </div>
+            <div class="replay-controls">
+                <button class="btn-secondary" onclick="replayControl('prev')">⏮️</button>
+                <button class="btn-primary" id="replayPlayBtn" onclick="replayControl('play')">▶️ 播放</button>
+                <button class="btn-secondary" onclick="replayControl('next')">⏭️</button>
+                <div class="replay-timeline">
+                    <input type="range" min="0" max="100" value="0" id="replayTimeline">
+                </div>
+                <span class="replay-time" id="replayTime">00:00 / 02:30</span>
+            </div>
+            <div class="replay-steps">
+                <h4>操作步骤</h4>
+                <div class="step-list" id="stepList">
+                    <div class="step-item active">
+                        <span class="step-num">1</span>
+                        <span>添加主标题元素</span>
+                        <span class="step-time">00:05</span>
+                    </div>
+                    <div class="step-item">
+                        <span class="step-num">2</span>
+                        <span>调整标题位置到顶部居中</span>
+                        <span class="step-time">00:15</span>
+                    </div>
+                    <div class="step-item">
+                        <span class="step-num">3</span>
+                        <span>添加图片元素</span>
+                        <span class="step-time">00:30</span>
+                    </div>
+                    <div class="step-item">
+                        <span class="step-num">4</span>
+                        <span>调整配色方案</span>
+                        <span class="step-time">00:45</span>
+                    </div>
+                    <div class="step-item">
+                        <span class="step-num">5</span>
+                        <span>添加正文内容</span>
+                        <span class="step-time">01:10</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast 提示 -->
+<div id="toast" class="toast"></div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
