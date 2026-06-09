@@ -402,11 +402,11 @@
                     </div>
                     <div class="sidebar-section">
                         <h4>🔤 字体选择</h4>
-                        <div class="font-list">
-                            <div class="font-item" style="font-family: 'Noto Sans SC', sans-serif;" onclick="selectFont('Noto Sans SC')">思源黑体</div>
-                            <div class="font-item locked" onclick="selectFont('serif')">宋体 <span class="lock-icon">🔒</span></div>
-                            <div class="font-item locked">楷体 <span class="lock-icon">🔒</span></div>
-                            <div class="font-item locked">艺术字体 <span class="lock-icon">🔒</span></div>
+                        <div class="font-list" id="editorFontList">
+                            <div class="font-item" style="font-family: 'Noto Sans SC', sans-serif;" data-font="Noto Sans SC" id="font-editor-noto" onclick="selectFont('Noto Sans SC')">思源黑体</div>
+                            <div class="font-item locked" style="font-family: SimSun, serif;" data-font="SimSun" id="font-editor-songti" onclick="selectFont('SimSun')">宋体 <span class="lock-icon">🔒</span></div>
+                            <div class="font-item locked" style="font-family: KaiTi, cursive;" data-font="KaiTi" id="font-editor-kaiti" onclick="selectFont('KaiTi')">楷体 <span class="lock-icon">🔒</span></div>
+                            <div class="font-item locked" style="font-family: 'Noto Sans SC', sans-serif; font-weight: 900;" data-font="bold" id="font-editor-bold" onclick="selectFont('bold')">粗体黑 <span class="lock-icon">🔒</span></div>
                         </div>
                     </div>
                     <div class="sidebar-section">
@@ -575,7 +575,7 @@
         <div class="assets-content">
             <div id="fonts-tab" class="tab-content active">
                 <div class="font-grid">
-                    <div class="font-card unlocked">
+                    <div class="font-card unlocked" id="font-card-noto">
                         <div class="font-preview" style="font-family: 'Noto Sans SC';">思源黑体</div>
                         <div class="font-info">
                             <h4>思源黑体</h4>
@@ -583,31 +583,31 @@
                             <span class="font-status unlocked-icon">✓ 已解锁</span>
                         </div>
                     </div>
-                    <div class="font-card locked">
+                    <div class="font-card locked" id="font-card-songti">
                         <div class="font-preview" style="font-family: serif;">宋体</div>
                         <div class="font-info">
                             <h4>宋体</h4>
                             <p>经典 · 衬线体</p>
                             <span class="font-status locked-icon">🔒 500金币</span>
-                            <button class="btn-unlock" onclick="unlockAsset('font', 'songti', 500)">解锁</button>
+                            <button class="btn-unlock" onclick="unlockAsset('font', 'songti', 500, this)">解锁</button>
                         </div>
                     </div>
-                    <div class="font-card locked">
-                        <div class="font-preview" style="font-family: cursive;">手写体</div>
+                    <div class="font-card locked" id="font-card-kaiti">
+                        <div class="font-preview" style="font-family: 'KaiTi', cursive;">楷体</div>
                         <div class="font-info">
-                            <h4>手写体</h4>
-                            <p>创意 · 手写</p>
+                            <h4>楷体</h4>
+                            <p>优雅 · 手写感</p>
                             <span class="font-status locked-icon">🔒 800金币</span>
-                            <button class="btn-unlock" onclick="unlockAsset('font', 'handwrite', 800)">解锁</button>
+                            <button class="btn-unlock" onclick="unlockAsset('font', 'kaiti', 800, this)">解锁</button>
                         </div>
                     </div>
-                    <div class="font-card locked">
-                        <div class="font-preview" style="font-weight: bold; font-family: 'Noto Sans SC';">粗体黑</div>
+                    <div class="font-card locked" id="font-card-bold">
+                        <div class="font-preview" style="font-weight: 900; font-family: 'Noto Sans SC';">粗体黑</div>
                         <div class="font-info">
                             <h4>粗体黑</h4>
                             <p>醒目 · 标题专用</p>
                             <span class="font-status locked-icon">🔒 300金币</span>
-                            <button class="btn-unlock" onclick="unlockAsset('font', 'bold', 300)">解锁</button>
+                            <button class="btn-unlock" onclick="unlockAsset('font', 'bold', 300, this)">解锁</button>
                         </div>
                     </div>
                 </div>
@@ -744,96 +744,6 @@
         </div>
 
         <div class="gallery-grid" id="galleryGrid">
-            <div class="gallery-item" onclick="openWorkDetail(1)">
-                <div class="work-preview" style="background: linear-gradient(135deg, #667eea, #764ba2);">
-                    <div class="work-overlay">
-                        <span class="work-title">夏日音乐节</span>
-                        <div class="work-stats">
-                            <span>❤️ 128</span>
-                            <span>💬 24</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="work-info">
-                    <span class="work-author">设计师小明</span>
-                    <button class="btn-favorite" onclick="event.stopPropagation(); toggleFavorite(this)">⭐</button>
-                </div>
-            </div>
-            <div class="gallery-item" onclick="openWorkDetail(2)">
-                <div class="work-preview" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
-                    <div class="work-overlay">
-                        <span class="work-title">美食嘉年华</span>
-                        <div class="work-stats">
-                            <span>❤️ 96</span>
-                            <span>💬 18</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="work-info">
-                    <span class="work-author">创意达人</span>
-                    <button class="btn-favorite" onclick="event.stopPropagation(); toggleFavorite(this)">☆</button>
-                </div>
-            </div>
-            <div class="gallery-item" onclick="openWorkDetail(3)">
-                <div class="work-preview" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
-                    <div class="work-overlay">
-                        <span class="work-title">科技峰会</span>
-                        <div class="work-stats">
-                            <span>❤️ 156</span>
-                            <span>💬 32</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="work-info">
-                    <span class="work-author">TechDesigner</span>
-                    <button class="btn-favorite active" onclick="event.stopPropagation(); toggleFavorite(this)">⭐</button>
-                </div>
-            </div>
-            <div class="gallery-item" onclick="openWorkDetail(4)">
-                <div class="work-preview" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
-                    <div class="work-overlay">
-                        <span class="work-title">环保公益海报</span>
-                        <div class="work-stats">
-                            <span>❤️ 88</span>
-                            <span>💬 12</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="work-info">
-                    <span class="work-author">GreenArtist</span>
-                    <button class="btn-favorite" onclick="event.stopPropagation(); toggleFavorite(this)">☆</button>
-                </div>
-            </div>
-            <div class="gallery-item" onclick="openWorkDetail(5)">
-                <div class="work-preview" style="background: linear-gradient(135deg, #fa709a, #fee140);">
-                    <div class="work-overlay">
-                        <span class="work-title">艺术展览</span>
-                        <div class="work-stats">
-                            <span>❤️ 203</span>
-                            <span>💬 45</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="work-info">
-                    <span class="work-author">ArtLover</span>
-                    <button class="btn-favorite" onclick="event.stopPropagation(); toggleFavorite(this)">☆</button>
-                </div>
-            </div>
-            <div class="gallery-item" onclick="openWorkDetail(6)">
-                <div class="work-preview" style="background: linear-gradient(135deg, #30cfd0, #330867);">
-                    <div class="work-overlay">
-                        <span class="work-title">运动会海报</span>
-                        <div class="work-stats">
-                            <span>❤️ 167</span>
-                            <span>💬 28</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="work-info">
-                    <span class="work-author">SportDesign</span>
-                    <button class="btn-favorite active" onclick="event.stopPropagation(); toggleFavorite(this)">⭐</button>
-                </div>
-            </div>
         </div>
 
         <!-- 作品详情弹窗 -->
@@ -844,18 +754,19 @@
                     <div class="work-large-preview" id="workLargePreview" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
                     <div class="work-detail-info">
                         <h2 id="workDetailTitle">夏日音乐节</h2>
-                        <p class="work-detail-author">by 设计师小明</p>
+                        <p class="work-detail-author" id="workDetailAuthor">by 设计师小明</p>
                         <div class="work-detail-stats">
                             <span>❤️ <span id="workLikes">128</span></span>
-                            <span>💬 <span id="workComments">24</span></span>
+                            <span>💬 <span id="workCommentsCount">24</span></span>
                             <span>👁️ <span id="workViews">1,024</span></span>
+                            <span>🏆 <span id="workScore">85</span>分</span>
                         </div>
                         <div class="work-detail-actions">
                             <button class="btn-primary" onclick="likeWork()">👍 点赞</button>
-                            <button class="btn-secondary" onclick="collectWork()">⭐ 收藏</button>
+                            <button class="btn-secondary" id="workDetailCollectBtn" onclick="collectWork()">⭐ 收藏</button>
                         </div>
                         <h3>评分</h3>
-                        <div class="work-scores">
+                        <div class="work-scores" id="workScoresContainer">
                             <div class="work-score-item">
                                 <span>版式</span>
                                 <div class="work-score-bar"><div class="work-score-fill" style="width: 90%"></div></div>
@@ -873,25 +784,11 @@
                             </div>
                         </div>
                         <h3>评论区</h3>
-                        <div class="comments-section">
-                            <div class="comment-item">
-                                <div class="comment-avatar">A</div>
-                                <div class="comment-content">
-                                    <span class="comment-author">UserA</span>
-                                    <p>配色很棒！学习了~</p>
-                                </div>
-                            </div>
-                            <div class="comment-item">
-                                <div class="comment-avatar">B</div>
-                                <div class="comment-content">
-                                    <span class="comment-author">UserB</span>
-                                    <p>排版很有创意！</p>
-                                </div>
-                            </div>
+                        <div class="comments-section" id="commentsSection">
                         </div>
                         <div class="comment-input">
-                            <input type="text" placeholder="发表你的评论...">
-                            <button class="btn-primary">发送</button>
+                            <input type="text" id="commentInput" placeholder="发表你的评论...">
+                            <button class="btn-primary" onclick="submitComment()">发送</button>
                         </div>
                     </div>
                 </div>

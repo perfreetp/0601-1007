@@ -11,7 +11,11 @@ let appState = {
     isPlaying: false,
     replaySteps: [],
     currentStep: 0,
-    dragData: null
+    dragData: null,
+    lastScores: null,
+    lastWorkId: null,
+    galleryFilter: 'all',
+    currentViewingWorkId: null
 };
 
 // ============ 页面导航 ============
@@ -33,9 +37,11 @@ function goToPage(pageName) {
             drawRadarChart();
         }, 100);
     }
+    if (pageName === 'gallery') {
+        renderGallery();
+    }
 }
 
-// 绑定导航按钮
 document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => goToPage(btn.dataset.page));
 });
@@ -48,6 +54,26 @@ function showToast(message, type = '') {
     setTimeout(() => {
         toast.classList.remove('show');
     }, 2500);
+}
+
+// ============ 初始化 ============
+function init() {
+    document.getElementById('userExp').textContent = GameData.user.exp;
+    document.getElementById('userCoins').textContent = GameData.user.coins;
+    updateTaskRequirements();
+    syncFontUI();
+    renderGallery();
+    bindGalleryFilters();
+    bindCommentEnter();
+}
+
+function bindCommentEnter() {
+    const input = document.getElementById('commentInput');
+    if (input) {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitComment();
+        });
+    }
 }
 
 // ============ 训练营功能 ============
@@ -214,12 +240,19 @@ function renderCanvasElement(element) {
         el.textContent = element.content;
         el.style.fontSize = element.fontSize + 'px';
         el.style.color = element.color;
-        el.style.fontFamily = element.fontFamily;
+        el.style.fontFamily = getFontCSS(element.fontFamily);
         el.style.fontWeight = element.fontWeight;
     } else if (element.type === 'image') {
         const img = document.createElement('img');
         img.src = element.content;
         img.style.width = '150px';
+        img.onerror = function() {
+            this.style.display = 'none';
+            const placeholder = document.createElement('div');
+            placeholder.style.cssText = 'width:150px;height:150px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:40px;';
+            placeholder.textContent = '🖼️';
+            el.appendChild(placeholder);
+        };
         el.appendChild(img);
     } else if (element.type === 'shape') {
         const shape = document.createElement('div');
@@ -317,7 +350,7 @@ function renderPropertyPanel(element) {
             <div class="prop-group">
                 <label>字号</label>
                 <input type="range" min="12" max="72" value="${element.fontSize}" 
-                       oninput="updateElementProp('fontSize', this.value); this.nextElementSibling.textContent = this.value + 'px'">
+                       oninput="updateElementProp('fontSize', parseInt(this.value)); this.nextElementSibling.textContent = this.value + 'px'">
                 <span>${element.fontSize}px</span>
             </div>
             <div class="prop-group">
@@ -331,6 +364,7 @@ function renderPropertyPanel(element) {
                     <option value="400" ${element.fontWeight === '400' ? 'selected' : ''}>常规</option>
                     <option value="500" ${element.fontWeight === '500' ? 'selected' : ''}>中等</option>
                     <option value="700" ${element.fontWeight === '700' ? 'selected' : ''}>粗体</option>
+                    <option value="900" ${element.fontWeight === '900' ? 'selected' : ''}>特粗</option>
                 </select>
             </div>
         `;
@@ -346,17 +380,22 @@ function renderPropertyPanel(element) {
     html += `
         <div class="prop-group">
             <label>位置 X</label>
-            <input type="number" value="${Math.round(element.x)}" onchange="updateElementProp('x', this.value)">
+            <input type="number" value="${Math.round(element.x)}" onchange="updateElementProp('x', parseFloat(this.value))">
         </div>
         <div class="prop-group">
             <label>位置 Y</label>
-            <input type="number" value="${Math.round(element.y)}" onchange="updateElementProp('y', this.value)">
+            <input type="number" value="${Math.round(element.y)}" onchange="updateElementProp('y', parseFloat(this.value))">
         </div>
         <button class="btn-secondary" style="width:100%;margin-top:12px;background:#fee;color:#c00;border-color:#fcc;" 
                 onclick="deleteSelectedElement()">删除元素</button>
     `;
     
     panel.innerHTML = html;
+}
+
+function getFontCSS(fontKey) {
+    const font = GameData.fonts[fontKey];
+    return font ? font.cssFamily : "'Noto Sans SC', sans-serif";
 }
 
 function updateElementProp(prop, value) {
@@ -375,7 +414,7 @@ function updateElementProp(prop, value) {
         if (prop === 'fontSize') domEl.style.fontSize = value + 'px';
         if (prop === 'color') domEl.style.color = value;
         if (prop === 'fontWeight') domEl.style.fontWeight = value;
-        if (prop === 'fontFamily') domEl.style.fontFamily = value;
+        if (prop === 'fontFamily') domEl.style.fontFamily = getFontCSS(value);
         if (prop === 'content') domEl.textContent = value;
         if (prop === 'bgColor') {
             const shape = domEl.querySelector('[class^="shape-"]');
@@ -383,7 +422,7 @@ function updateElementProp(prop, value) {
         }
     }
     
-    if (prop === 'fontSize' || prop === 'color') {
+    if (prop === 'fontSize') {
         renderPropertyPanel(element);
     }
 }
@@ -442,13 +481,69 @@ function applyCustomColor(color) {
     showToast('背景色已更新');
 }
 
+// ============ 字体功能 ============
 function selectFont(fontName) {
+    const font = GameData.fonts[fontName];
+    if (!font) return;
+    
+    if (!GameData.user.unlockedFonts.includes(fontName)) {
+        showToast('该字体尚未解锁，请先在素材仓库解锁', 'error');
+        return;
+    }
+    
     if (!appState.selectedElement || appState.selectedElement.type !== 'text') {
         showToast('请先选择文字元素', 'error');
         return;
     }
+    
     updateElementProp('fontFamily', fontName);
-    showToast(`字体已切换为: ${fontName}`);
+    if (font.fontWeight) {
+        updateElementProp('fontWeight', font.fontWeight.toString());
+    }
+    
+    showToast(`字体已切换为: ${font.name}`);
+}
+
+function syncFontUI() {
+    const unlocked = GameData.user.unlockedFonts;
+    const idSuffixMap = {
+        'Noto Sans SC': 'noto',
+        'SimSun': 'songti',
+        'KaiTi': 'kaiti',
+        'bold': 'bold'
+    };
+    
+    Object.keys(GameData.fonts).forEach(fontKey => {
+        const font = GameData.fonts[fontKey];
+        const suffix = idSuffixMap[fontKey] || fontKey.toLowerCase().replace(/\s+/g, '');
+        const cardId = 'font-card-' + suffix;
+        const editorId = 'font-editor-' + suffix;
+        
+        const card = document.getElementById(cardId);
+        const editorFont = document.getElementById(editorId);
+        
+        if (unlocked.includes(fontKey)) {
+            if (card && !card.classList.contains('unlocked')) {
+                card.classList.remove('locked');
+                card.classList.add('unlocked');
+                const info = card.querySelector('.font-info');
+                if (info) {
+                    const oldStatus = info.querySelector('.font-status');
+                    const unlockBtn = info.querySelector('.btn-unlock');
+                    if (oldStatus) {
+                        oldStatus.className = 'font-status unlocked-icon';
+                        oldStatus.textContent = '✓ 已解锁';
+                    }
+                    if (unlockBtn) unlockBtn.remove();
+                }
+            }
+            if (editorFont && editorFont.classList.contains('locked')) {
+                editorFont.classList.remove('locked');
+                const lockIcon = editorFont.querySelector('.lock-icon');
+                if (lockIcon) lockIcon.remove();
+            }
+        }
+    });
 }
 
 // ============ 任务要求检查 ============
@@ -483,6 +578,7 @@ function submitDesign() {
     }
     
     const scores = calculateScores();
+    appState.lastScores = scores;
     
     setTimeout(() => {
         document.getElementById('finalScore').textContent = scores.total;
@@ -530,87 +626,419 @@ function nextLevel() {
     }
 }
 
-// ============ 评分页面功能 ============
-function fixMistake(type) {
-    showToast(`已修正: ${type === 'contrast' ? '对比度不足' : type}`, 'success');
-}
-
+// ============ 功能1：真实导出画布图片 ============
 function exportDesign() {
-    showToast('正在导出练习图...', 'success');
-    setTimeout(() => showToast('导出成功！图片已保存', 'success'), 1500);
+    showToast('正在生成图片...', 'success');
+    
+    setTimeout(() => {
+        try {
+            const targetCanvas = document.createElement('canvas');
+            const ctx = targetCanvas.getContext('2d');
+            const W = 800, H = 1120;
+            targetCanvas.width = W;
+            targetCanvas.height = H;
+            
+            const bgEl = document.getElementById('canvasBg');
+            const bgStyle = bgEl.style.background || 'linear-gradient(135deg, #f8fafc, #e2e8f0)';
+            
+            if (bgStyle.startsWith('#') || bgStyle.startsWith('rgb')) {
+                ctx.fillStyle = bgStyle;
+                ctx.fillRect(0, 0, W, H);
+            } else {
+                const gradient = ctx.createLinearGradient(0, 0, W, H);
+                const colors = ['#f8fafc', '#e2e8f0'];
+                if (bgStyle.includes('#FF6B6B')) { gradient.addColorStop(0, '#F7FFF7'); gradient.addColorStop(1, '#FFE66D'); }
+                else if (bgStyle.includes('#2C3E50')) { gradient.addColorStop(0, '#ECF0F1'); gradient.addColorStop(1, '#BDC3C7'); }
+                else if (bgStyle.includes('#2D5016')) { gradient.addColorStop(0, '#FFFACD'); gradient.addColorStop(1, '#9ACD32'); }
+                else if (bgStyle.includes('#FF4500')) { gradient.addColorStop(0, '#FFFFE0'); gradient.addColorStop(1, '#FFD700'); }
+                else if (bgStyle.includes('#667eea')) { gradient.addColorStop(0, '#667eea'); gradient.addColorStop(1, '#764ba2'); }
+                else { gradient.addColorStop(0, colors[0]); gradient.addColorStop(1, colors[1]); }
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, W, H);
+            }
+            
+            const scale = 2;
+            appState.canvasElements.forEach(el => {
+                const x = el.x * scale;
+                const y = el.y * scale;
+                
+                if (el.type === 'text') {
+                    const fontSize = (el.fontSize || 16) * scale;
+                    const fontWeight = el.fontWeight || '400';
+                    ctx.fillStyle = el.color || '#1e293b';
+                    ctx.font = `${fontWeight} ${fontSize}px "Noto Sans SC", sans-serif`;
+                    ctx.textBaseline = 'top';
+                    
+                    const text = el.content || '';
+                    const chars = text.split('');
+                    let line = '';
+                    let lineY = y;
+                    const maxWidth = 300 * scale;
+                    
+                    chars.forEach(char => {
+                        const testLine = line + char;
+                        if (ctx.measureText(testLine).width > maxWidth && line) {
+                            ctx.fillText(line, x, lineY);
+                            line = char;
+                            lineY += fontSize * 1.4;
+                        } else {
+                            line = testLine;
+                        }
+                    });
+                    if (line) ctx.fillText(line, x, lineY);
+                    
+                } else if (el.type === 'shape') {
+                    ctx.fillStyle = el.bgColor || '#667eea';
+                    const size = 100 * scale;
+                    if (el.content === 'rect') {
+                        ctx.fillRect(x, y, size, size);
+                    } else if (el.content === 'circle') {
+                        ctx.beginPath();
+                        ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (el.content === 'line') {
+                        ctx.fillRect(x, y + 20*scale, 150*scale, 4*scale);
+                    }
+                } else if (el.type === 'image') {
+                    const imgW = 150 * scale;
+                    const imgH = 150 * scale;
+                    const imgGradient = ctx.createLinearGradient(x, y, x + imgW, y + imgH);
+                    imgGradient.addColorStop(0, '#667eea');
+                    imgGradient.addColorStop(1, '#764ba2');
+                    ctx.fillStyle = imgGradient;
+                    ctx.fillRect(x, y, imgW, imgH);
+                    ctx.fillStyle = 'white';
+                    ctx.font = `${40 * scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🖼️', x + imgW/2, y + imgH/2);
+                    ctx.textAlign = 'start';
+                }
+            });
+            
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, 0, W, H);
+            
+            const link = document.createElement('a');
+            link.download = `design-${Date.now()}.png`;
+            link.href = targetCanvas.toDataURL('image/png');
+            link.click();
+            
+            showToast('图片已下载！', 'success');
+        } catch (e) {
+            console.error(e);
+            showToast('导出失败，请重试', 'error');
+        }
+    }, 800);
 }
 
+// ============ 功能2：保存作品到作品墙（持久化） ============
 function saveToGallery() {
-    showToast('作品已保存到作品墙', 'success');
-}
-
-function shareScore() {
-    showToast('成绩卡已复制到剪贴板，快去分享吧！', 'success');
-}
-
-// ============ 素材仓库 ============
-document.querySelectorAll('.asset-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        document.querySelectorAll('.asset-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(tab.dataset.tab + '-tab').classList.add('active');
-    });
-});
-
-function unlockAsset(type, id, cost) {
-    if (GameData.user.coins < cost) {
-        showToast('金币不足，完成更多任务获取金币', 'error');
+    if (!appState.lastScores) {
+        showToast('请先完成评分再保存', 'error');
         return;
     }
-    GameData.user.coins -= cost;
+    
+    const title = appState.currentLevel 
+        ? `关卡${appState.currentLevel.id}: ${appState.currentLevel.title}` 
+        : '我的设计作品';
+    
+    const bgEl = document.getElementById('canvasBg');
+    const bgStyle = bgEl.style.background;
+    let gradientIdx = 0;
+    if (bgStyle.includes('#f093fb')) gradientIdx = 1;
+    else if (bgStyle.includes('#4facfe')) gradientIdx = 2;
+    else if (bgStyle.includes('#43e97b')) gradientIdx = 3;
+    else if (bgStyle.includes('#fa709a')) gradientIdx = 4;
+    else if (bgStyle.includes('#30cfd0')) gradientIdx = 5;
+    
+    const newId = Date.now();
+    const newWork = {
+        id: newId,
+        title: title,
+        author: '我',
+        isMine: true,
+        likes: 0,
+        liked: false,
+        views: 0,
+        score: appState.lastScores.total,
+        gradientIdx: gradientIdx,
+        favorite: false,
+        scores: {
+            layout: appState.lastScores.layout,
+            color: appState.lastScores.color,
+            creativity: appState.lastScores.creativity
+        },
+        comments: [],
+        createdAt: new Date().toISOString()
+    };
+    
+    GameData.galleryWorks.unshift(newWork);
+    GameData.myWorks.unshift(newId);
+    GameData.saveWorks();
+    GameData.saveMyWorks();
+    
+    GameData.user.coins += 50;
+    GameData.user.exp += appState.lastScores.total;
+    GameData.saveUser();
     document.getElementById('userCoins').textContent = GameData.user.coins;
-    showToast('解锁成功！', 'success');
+    document.getElementById('userExp').textContent = GameData.user.exp;
+    
+    appState.lastWorkId = newId;
+    showToast('作品已保存到作品墙！+50金币', 'success');
 }
 
-function useScheme() { showToast('配色方案已应用', 'success'); }
-function favoriteScheme() { showToast('已收藏配色方案', 'success'); }
-function useTemplate() { showToast('模板加载中...', 'success'); }
+// ============ 功能3：解锁字体 ============
+function unlockAsset(type, id, cost, btnEl) {
+    const fontKeyMap = { songti: 'SimSun', kaiti: 'KaiTi', bold: 'bold' };
+    const fontKey = fontKeyMap[id] || id;
+    const font = GameData.fonts[fontKey];
+    
+    if (!font) return;
+    
+    if (GameData.user.unlockedFonts.includes(fontKey)) {
+        showToast('该字体已经解锁了', '');
+        return;
+    }
+    
+    if (GameData.user.coins < cost) {
+        showToast(`金币不足！还需要 ${cost - GameData.user.coins} 金币`, 'error');
+        return;
+    }
+    
+    GameData.user.coins -= cost;
+    GameData.user.unlockedFonts.push(fontKey);
+    GameData.saveUser();
+    
+    document.getElementById('userCoins').textContent = GameData.user.coins;
+    syncFontUI();
+    
+    showToast(`成功解锁「${font.name}」！`, 'success');
+}
 
-// ============ 作品墙 ============
-function toggleFavorite(btn) {
-    if (btn.classList.contains('active')) {
-        btn.classList.remove('active');
-        btn.textContent = '☆';
+// ============ 功能4：作品墙渲染与筛选 ============
+function renderGallery() {
+    const grid = document.getElementById('galleryGrid');
+    if (!grid) return;
+    
+    let works = [...GameData.galleryWorks];
+    const filter = appState.galleryFilter;
+    
+    if (filter === 'mine') {
+        works = works.filter(w => w.isMine);
+    } else if (filter === 'favorites') {
+        works = works.filter(w => GameData.favorites.includes(w.id));
+    } else if (filter === 'popular') {
+        works = works.sort((a, b) => b.likes - a.likes);
+    }
+    
+    if (works.length === 0) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-secondary);">
+            <div style="font-size:48px;margin-bottom:12px;">📭</div>
+            <p>${filter === 'mine' ? '还没有作品，快去设计一个吧！' : filter === 'favorites' ? '还没有收藏作品' : '暂无内容'}</p>
+        </div>`;
+        return;
+    }
+    
+    grid.innerHTML = works.map(work => {
+        const isFav = GameData.favorites.includes(work.id);
+        const gradient = GameData.gradients[work.gradientIdx % GameData.gradients.length];
+        return `
+            <div class="gallery-item" onclick="openWorkDetail(${work.id})">
+                <div class="work-preview" style="background: ${gradient};">
+                    <div class="work-overlay">
+                        <span class="work-title">${work.title}</span>
+                        <div class="work-stats">
+                            <span>❤️ ${work.likes}</span>
+                            <span>💬 ${work.comments.length}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="work-info">
+                    <span class="work-author">${work.author}${work.isMine ? ' (我)' : ''}</span>
+                    <button class="btn-favorite ${isFav ? 'active' : ''}" 
+                            onclick="event.stopPropagation(); toggleFavoriteWork(${work.id}, this)">
+                        ${isFav ? '⭐' : '☆'}
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function bindGalleryFilters() {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            appState.galleryFilter = btn.dataset.filter;
+            renderGallery();
+        });
+    });
+}
+
+function toggleFavoriteWork(workId, btnEl) {
+    const idx = GameData.favorites.indexOf(workId);
+    if (idx > -1) {
+        GameData.favorites.splice(idx, 1);
+        btnEl.classList.remove('active');
+        btnEl.textContent = '☆';
         showToast('已取消收藏');
     } else {
-        btn.classList.add('active');
-        btn.textContent = '⭐';
+        GameData.favorites.push(workId);
+        btnEl.classList.add('active');
+        btnEl.textContent = '⭐';
         showToast('已收藏作品', 'success');
+    }
+    GameData.saveFavorites();
+    
+    if (appState.galleryFilter === 'favorites') {
+        renderGallery();
     }
 }
 
+// ============ 作品详情 ============
 function openWorkDetail(id) {
     const work = GameData.galleryWorks.find(w => w.id === id);
     if (!work) return;
     
-    const gradients = [
-        'linear-gradient(135deg, #667eea, #764ba2)',
-        'linear-gradient(135deg, #f093fb, #f5576c)',
-        'linear-gradient(135deg, #4facfe, #00f2fe)',
-        'linear-gradient(135deg, #43e97b, #38f9d7)'
-    ];
+    appState.currentViewingWorkId = id;
+    work.views = (work.views || 0) + 1;
+    GameData.saveWorks();
     
-    document.getElementById('workLargePreview').style.background = gradients[(id - 1) % gradients.length];
+    const gradient = GameData.gradients[work.gradientIdx % GameData.gradients.length];
+    document.getElementById('workLargePreview').style.background = gradient;
     document.getElementById('workDetailTitle').textContent = work.title;
+    document.getElementById('workDetailAuthor').textContent = 'by ' + work.author + (work.isMine ? ' (我)' : '');
     document.getElementById('workLikes').textContent = work.likes;
-    document.getElementById('workComments').textContent = work.comments;
-    document.getElementById('workViews').textContent = work.views.toLocaleString();
+    document.getElementById('workCommentsCount').textContent = work.comments.length;
+    document.getElementById('workViews').textContent = (work.views || 0).toLocaleString();
+    document.getElementById('workScore').textContent = work.score || '-';
     
+    const isFav = GameData.favorites.includes(id);
+    const collectBtn = document.getElementById('workDetailCollectBtn');
+    collectBtn.textContent = isFav ? '⭐ 已收藏' : '⭐ 收藏';
+    
+    const scoresContainer = document.getElementById('workScoresContainer');
+    if (work.scores) {
+        scoresContainer.innerHTML = `
+            <div class="work-score-item">
+                <span>版式</span>
+                <div class="work-score-bar"><div class="work-score-fill" style="width: ${work.scores.layout}%"></div></div>
+                <span>${work.scores.layout}</span>
+            </div>
+            <div class="work-score-item">
+                <span>配色</span>
+                <div class="work-score-bar"><div class="work-score-fill" style="width: ${work.scores.color}%"></div></div>
+                <span>${work.scores.color}</span>
+            </div>
+            <div class="work-score-item">
+                <span>创意</span>
+                <div class="work-score-bar"><div class="work-score-fill" style="width: ${work.scores.creativity}%"></div></div>
+                <span>${work.scores.creativity}</span>
+            </div>
+        `;
+    }
+    
+    renderComments(work.comments);
     document.getElementById('workDetailModal').classList.add('active');
 }
 
 function closeWorkDetail() {
     document.getElementById('workDetailModal').classList.remove('active');
+    appState.currentViewingWorkId = null;
 }
 
-function likeWork() { showToast('点赞成功！', 'success'); }
-function collectWork() { showToast('收藏成功！', 'success'); }
+function likeWork() {
+    const id = appState.currentViewingWorkId;
+    if (!id) return;
+    const work = GameData.galleryWorks.find(w => w.id === id);
+    if (!work) return;
+    if (work.liked) {
+        showToast('你已经点过赞了');
+        return;
+    }
+    work.likes++;
+    work.liked = true;
+    document.getElementById('workLikes').textContent = work.likes;
+    GameData.saveWorks();
+    renderGallery();
+    showToast('点赞成功！', 'success');
+}
+
+function collectWork() {
+    const id = appState.currentViewingWorkId;
+    if (!id) return;
+    
+    const idx = GameData.favorites.indexOf(id);
+    const collectBtn = document.getElementById('workDetailCollectBtn');
+    
+    if (idx > -1) {
+        GameData.favorites.splice(idx, 1);
+        collectBtn.textContent = '⭐ 收藏';
+        showToast('已取消收藏');
+    } else {
+        GameData.favorites.push(id);
+        collectBtn.textContent = '⭐ 已收藏';
+        showToast('已收藏作品', 'success');
+    }
+    GameData.saveFavorites();
+    renderGallery();
+}
+
+// ============ 功能5：评论功能 ============
+function renderComments(comments) {
+    const container = document.getElementById('commentsSection');
+    if (!comments || comments.length === 0) {
+        container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:13px;">
+            还没有评论，快来抢沙发吧~
+        </div>`;
+        return;
+    }
+    container.innerHTML = comments.map(c => `
+        <div class="comment-item">
+            <div class="comment-avatar">${c.avatar || c.author.charAt(0).toUpperCase()}</div>
+            <div class="comment-content">
+                <span class="comment-author">${c.author}</span>
+                <p>${c.content}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function submitComment() {
+    const id = appState.currentViewingWorkId;
+    if (!id) return;
+    
+    const input = document.getElementById('commentInput');
+    const content = input.value.trim();
+    
+    if (!content) {
+        showToast('请输入评论内容', 'error');
+        return;
+    }
+    
+    const work = GameData.galleryWorks.find(w => w.id === id);
+    if (!work) return;
+    
+    work.comments.push({
+        author: '我',
+        avatar: '我',
+        content: content
+    });
+    
+    GameData.saveWorks();
+    renderComments(work.comments);
+    document.getElementById('workCommentsCount').textContent = work.comments.length;
+    input.value = '';
+    renderGallery();
+    showToast('评论发表成功！', 'success');
+}
+
+function useScheme() { showToast('配色方案已应用', 'success'); }
+function favoriteScheme() { showToast('已收藏配色方案', 'success'); }
+function useTemplate() { showToast('模板加载中...', 'success'); }
 
 // ============ 对战房 ============
 function joinQuickBattle() {
@@ -694,8 +1122,7 @@ function drawGrowthChart() {
     data.forEach((val, i) => {
         const x = padding.left + stepX * i;
         const y = padding.top + chartH - (val / maxVal) * chartH;
-        if (i === 0) ctx.lineTo(x, y);
-        else ctx.lineTo(x, y);
+        ctx.lineTo(x, y);
     });
     ctx.lineTo(padding.left + stepX * (data.length - 1), h - padding.bottom);
     ctx.closePath();
@@ -800,7 +1227,7 @@ function drawRadarChart() {
         const y = centerY + r * Math.sin(angles[i]);
         
         ctx.beginPath();
-        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
         ctx.fillStyle = '#667eea';
         ctx.fill();
         
@@ -910,13 +1337,15 @@ document.getElementById('portfolioTitleInput')?.addEventListener('input', (e) =>
     document.querySelector('.portfolio-title').textContent = e.target.value || '我的作品集';
 });
 
-// ============ 初始化 ============
-function init() {
-    document.getElementById('userExp').textContent = GameData.user.exp;
-    document.getElementById('userCoins').textContent = GameData.user.coins;
-    updateTaskRequirements();
+function shareScore() {
+    showToast('成绩卡已复制到剪贴板，快去分享吧！', 'success');
 }
 
+function fixMistake(type) {
+    showToast(`已修正: ${type === 'contrast' ? '对比度不足' : type}`, 'success');
+}
+
+// ============ 全局事件 ============
 window.addEventListener('load', init);
 window.addEventListener('resize', () => {
     if (appState.currentPage === 'review') {

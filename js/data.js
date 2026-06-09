@@ -1,15 +1,35 @@
+// ============ 本地存储辅助函数 ============
+const Storage = {
+    get(key, defaultValue) {
+        try {
+            const saved = localStorage.getItem('designquest_' + key);
+            return saved ? JSON.parse(saved) : defaultValue;
+        } catch (e) {
+            return defaultValue;
+        }
+    },
+    set(key, value) {
+        try {
+            localStorage.setItem('designquest_' + key, JSON.stringify(value));
+        } catch (e) {}
+    }
+};
+
 // ============ 游戏数据 ============
 const GameData = {
-    user: {
+    fonts: {
+        'Noto Sans SC': { name: '思源黑体', cssFamily: "'Noto Sans SC', sans-serif", unlocked: true, price: 0 },
+        'SimSun': { name: '宋体', cssFamily: 'SimSun, serif', unlocked: false, price: 500 },
+        'KaiTi': { name: '楷体', cssFamily: 'KaiTi, cursive', unlocked: false, price: 800 },
+        'bold': { name: '粗体黑', cssFamily: "'Noto Sans SC', sans-serif", fontWeight: 900, unlocked: false, price: 300 }
+    },
+
+    user: Storage.get('user', {
         exp: 1250,
         coins: 580,
         level: 8,
-        unlockedFonts: ['Noto Sans SC'],
-        unlockedThemes: ['music', 'food', 'tech'],
-        completedLevels: [1, 2],
-        favorites: [],
-        works: []
-    },
+        unlockedFonts: ['Noto Sans SC']
+    }),
 
     palettes: {
         vibrant: ['#FF6B6B', '#4ECDC4', '#FFE66D', '#1A535C', '#F7FFF7'],
@@ -19,6 +39,15 @@ const GameData = {
         ocean: ['#006994', '#40E0D0', '#AFEEEE', '#E0FFFF', '#F0FFFF'],
         sunset: ['#FF6B6B', '#FFA07A', '#FFD93D', '#6BCB77', '#4D96FF']
     },
+
+    gradients: [
+        'linear-gradient(135deg, #667eea, #764ba2)',
+        'linear-gradient(135deg, #f093fb, #f5576c)',
+        'linear-gradient(135deg, #4facfe, #00f2fe)',
+        'linear-gradient(135deg, #43e97b, #38f9d7)',
+        'linear-gradient(135deg, #fa709a, #fee140)',
+        'linear-gradient(135deg, #30cfd0, #330867)'
+    ],
 
     courses: {
         layout: {
@@ -93,16 +122,34 @@ const GameData = {
         }
     ],
 
-    galleryWorks: [
-        { id: 1, title: '夏日音乐节', author: '设计师小明', likes: 128, comments: 24, views: 1024, score: 85 },
-        { id: 2, title: '美食嘉年华', author: '创意达人', likes: 96, comments: 18, views: 856, score: 78 },
-        { id: 3, title: '科技峰会', author: 'TechDesigner', likes: 156, comments: 32, views: 1280, score: 92 },
-        { id: 4, title: '环保公益海报', author: 'GreenArtist', likes: 88, comments: 12, views: 640, score: 80 }
-    ],
+    // 作品数据（含默认社区作品）
+    galleryWorks: Storage.get('works', [
+        { id: 1, title: '夏日音乐节', author: '设计师小明', isMine: false, likes: 128, liked: false, views: 1024, score: 85, gradientIdx: 0, favorite: true, scores: { layout: 90, color: 85, creativity: 92 }, comments: [
+            { author: 'UserA', avatar: 'A', content: '配色很棒！学习了~' },
+            { author: 'UserB', avatar: 'B', content: '排版很有创意！' }
+        ]},
+        { id: 2, title: '美食嘉年华', author: '创意达人', isMine: false, likes: 96, liked: false, views: 856, score: 78, gradientIdx: 1, favorite: false, scores: { layout: 78, color: 82, creativity: 75 }, comments: [
+            { author: 'FoodLover', avatar: 'F', content: '看着就有食欲！' }
+        ]},
+        { id: 3, title: '科技峰会', author: 'TechDesigner', isMine: false, likes: 156, liked: false, views: 1280, score: 92, gradientIdx: 2, favorite: true, scores: { layout: 95, color: 90, creativity: 90 }, comments: [
+            { author: 'Geek', avatar: 'G', content: '未来感十足' }
+        ]},
+        { id: 4, title: '环保公益海报', author: 'GreenArtist', isMine: false, likes: 88, liked: false, views: 640, score: 80, gradientIdx: 3, favorite: false, scores: { layout: 80, color: 85, creativity: 78 }, comments: [] },
+        { id: 5, title: '艺术展览', author: 'ArtLover', isMine: false, likes: 203, liked: false, views: 1536, score: 91, gradientIdx: 4, favorite: false, scores: { layout: 88, color: 92, creativity: 95 }, comments: [] },
+        { id: 6, title: '运动会海报', author: 'SportDesign', isMine: false, likes: 167, liked: false, views: 1100, score: 87, gradientIdx: 5, favorite: true, scores: { layout: 85, color: 88, creativity: 89 }, comments: [] }
+    ]),
+
+    favorites: Storage.get('favorites', [3, 6, 1]),
+    myWorks: Storage.get('myWorks', []),
 
     dailyTasks: [
         { id: 1, title: '完成1个版式关卡', reward: 50, done: true },
         { id: 2, title: '尝试3种配色方案', reward: 30, done: false },
         { id: 3, title: '收藏1个优秀作品', reward: 20, done: false }
-    ]
+    ],
+
+    saveUser() { Storage.set('user', this.user); },
+    saveWorks() { Storage.set('works', this.galleryWorks); },
+    saveFavorites() { Storage.set('favorites', this.favorites); },
+    saveMyWorks() { Storage.set('myWorks', this.myWorks); }
 };
